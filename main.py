@@ -3,25 +3,39 @@ import os, sys
 
 """ Project """
 
-project_name = 'mpii2015'
+project_name = 'mpii2015' #CHANGABLE
 project_dir = os.path.join('projects', project_name)
 sys.path.append(project_dir)
 
 
 """ Experiment details """
 
-# Name of experiment
+# Options
+
+## Name of experiment
 experiment_name = '25112020 0800 EfficientPose Det Lite'
 
-# Flags
-train = True #[True, False]
-evaluate = True #[True, False]
+## Flags
+train = True #[True, False] 
+evaluate = True #[True, False] 
 
-# Model configuration
+## GPU usage
+gpus = "0" #["0,1", "0", "1", ""]
+gpu_memory_fraction = 0.8
 
-model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientHourglass Lite', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose'] #CHANGABLE
-input_resolution = 128 #CHANGABLE
-upscaled_output_resolution = input_resolution #CHANGABLE
+## Model configuration
+model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientHourglass Lite', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose'] 
+input_resolution = 128 
+upscaled_output_resolution = input_resolution 
+
+## Training hyperparameters
+training_batch_size = 20 
+start_epoch = 0 
+num_epochs = 100 
+
+# Static hyperparameters
+
+## Model configuration
 raw_output_resolution = {'EfficientHourglass': int(input_resolution / 4), 
                         'EfficientHourglass Lite': int(input_resolution / 4),
                         'EfficientPose': int(input_resolution / 8), 
@@ -49,10 +63,7 @@ output_type = {'EfficientHourglass': 'EH-1-TUNE',
                'EfficientPose Lite': 'EP-1+2-PAFS-TUNE', 
                'CIMA-Pose': 'CP-2-TUNE'}[model_type]
 
-# Training hyperparameters
-training_batch_size = 20
-start_epoch = 0
-num_epochs = 100
+## Train hyperparameters
 schedule = {16: [(1.8, 0.87, 0, None), (1.64, 0.79, 2, None), (1.48, 0.71, 6, None),(1.32, 0.625, 14, None),(1.25, 0.563, 22, None),(1.163, 0.547, 30, None),(1.075, 0.532, 38, None), (0.988, 0.516, 46, None), (0.9, 0.5, 54, None)], 
             28: [(3.1, 1.53, 0, None),(2.6, 1.31, 2, None),(2.2, 1.09, 6, None),(1.75, 0.875, 14, None),(1.53, 0.788, 22, None),(1.422, 0.766, 30, None),(1.313, 0.744, 38, None),(1.203, 0.722, 46, None),(1.1, 0.7, 54, None)],
             32: [(3.5, 1.75, 0, None), (3.0, 1.5, 2, None), (2.5, 1.25, 6, None),(2.0, 1.0, 14, None),(1.75, 0.9, 22, None),(1.625, 0.875, 30, None),(1.5, 0.85, 38, None), (1.375, 0.825, 46, None), (1.25, 0.8, 54, None)],
@@ -68,7 +79,7 @@ augmentation_rotation = 45
 augmentation_zoom = 0.25
 augmentation_flip = True
 
-# Evaluation options
+## Evaluation options
 evaluation_batch_size = 49
 pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05]
 confidence_threshold = 0.0001
@@ -107,11 +118,12 @@ import project_constants as pc
 """ GPU specifications  """
 
 # Assign GPU
-os.environ["CUDA_VISIBLE_DEVICES"] = "0" #["0", "1", ""]
+os.environ["CUDA_VISIBLE_DEVICES"] = gpus
 
 # Specify GPU usage
 config = tf.compat.v1.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.8
+config.gpu_options.allow_growth = True
+config.gpu_options.per_process_gpu_memory_fraction = gpu_memory_fraction
 tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
 
@@ -125,7 +137,9 @@ os.makedirs(weights_dir, exist_ok=True)
 """ Store experiment hyperparameters """
 
 # Construct dictionary of hyperparameters
-hyperparameters = {'model': {'model_type': model_type,
+hyperparameters = {'gpu_usage': {'gpus': gpus,
+                                 'gpu_memory_fraction': gpu_memory_fraction},
+                   'model': {'model_type': model_type,
                             'input_resolution': input_resolution,
                             'raw_output_resolution': raw_output_resolution,
                             'upscaled_output_resolution': upscaled_output_resolution,
