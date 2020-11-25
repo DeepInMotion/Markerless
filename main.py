@@ -11,21 +11,22 @@ sys.path.append(project_dir)
 """ Experiment details """
 
 # Name of experiment
-experiment_name = '24112020 2009 EfficientPose RT Lite'
+experiment_name = '25112020 0800 EfficientPose Det Lite'
 
 # Flags
 train = True #[True, False]
 evaluate = True #[True, False]
 
 # Model configuration
-model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientHourglass Lite', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose']
-input_resolution = 224
+
+model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientHourglass Lite', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose'] #CHANGABLE
+input_resolution = 128 #CHANGABLE
+upscaled_output_resolution = input_resolution #CHANGABLE
 raw_output_resolution = {'EfficientHourglass': int(input_resolution / 4), 
                         'EfficientHourglass Lite': int(input_resolution / 4),
                         'EfficientPose': int(input_resolution / 8), 
                         'EfficientPose Lite': int(input_resolution / 8), 
                         'CIMA-Pose': int(input_resolution / 8)}[model_type] 
-upscaled_output_resolution = input_resolution
 training_output_layer = {'EfficientHourglass': 'stage1_confs_tune', #ENSURE CONSISTENCY WITH LAYER NAMING
                         'EfficientHourglass Lite': 'stage1_confs_tune', #ENSURE CONSISTENCY WITH LAYER NAMING
                         'EfficientPose': 'pass3_detection2_confs_tune', 
@@ -174,6 +175,7 @@ datagenerator_settings = {'input_size': (input_resolution, input_resolution),
 train_datagenerator = datagenerator.DataGenerator(df=train_df, settings=datagenerator_settings)
 val_datagenerator = datagenerator.DataGenerator(df=val_df, settings=datagenerator_settings)
   
+    
 """ Initialize model """
 
 convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS)
@@ -191,11 +193,11 @@ if train:
     adam = Adam(lr=learning_rate, beta_1=beta1, beta_2=beta2, decay=learning_rate_decay, amsgrad=amsgrad_flag)
 
     ## Initialize TensorBoard monitoring
-    tensorboard_callbacks = TensorBoard(log_dir=experiment_dir, write_graph=True, batch_size=training_batch_size)
+    tensorboard_callbacks = TensorBoard(log_dir=experiment_dir, write_graph=True)
 
     ## Initialize checkpointing 
     checkpoint_path = weights_dir + '/weights.{epoch}.hdf5'
-    checkpoint_callbacks = AltModelCheckpoint(checkpoint_path, convnet.model, save_best_only=False)
+    checkpoint_callbacks = AltModelCheckpoint(checkpoint_path, convnet.model, save_best_only=False) #Check TF format
 
     ## Initialize evaluation during training
     raw_evaluation_model = evaluation.EvaluationModel(model=model, input_resolution=input_resolution, raw_output_resolution=raw_output_resolution)
@@ -209,7 +211,7 @@ if train:
 
     ## Training function
     def fit_model(model, train_data, val_data, train_generator, val_generator, epochs, initial_epoch=0):
-        model.fit_generator(train_data,
+        model.fit(train_data,
                                       steps_per_epoch=train_generator.n_steps(),
                                       epochs=epochs,
                                       validation_data=val_data,
@@ -232,10 +234,11 @@ if train:
         train_data = train_datagenerator.get_data(batch_size=training_batch_size, schedule=schedule, initial_epoch=start_epoch, shuffle=True, augment=True, supply_pafs=supply_pafs, model_type=output_type, preprocess_input=m.preprocess_input, segments=pc.SEGMENT_INDICES)
         val_data = val_datagenerator.get_data(batch_size=training_batch_size, schedule=schedule, initial_epoch=start_epoch, shuffle=False, augment=False, supply_pafs=supply_pafs, model_type=output_type, preprocess_input=m.preprocess_input, segments=pc.SEGMENT_INDICES)
 
-        convnet.model.load_weights(os.path.join(weights_dir, 'weights.{0}.hdf5'.format(start_epoch)))
+        convnet.model.load_weights(os.path.join(weights_dir, 'weights.{0}.hdf5'.format(start_epoch))) #Check TF format
 
         fit_model(model, train_data, val_data, train_datagenerator, val_datagenerator, num_epochs, initial_epoch=start_epoch)
 
+        
 """ Evaluation """
 
 if evaluate:
@@ -252,11 +255,14 @@ if evaluate:
         reader = csv.reader(csv_file, delimiter=',')
         header = next(reader)
         for row in reader:
-            epoch = int(row[0]) 
-            mean_error = float(row[1])
-            if mean_error < best_mean_error:
-                best_epoch = epoch
-                best_mean_error = mean_error
+            try:
+                epoch = int(row[0])
+                mean_error = float(row[1])
+                if mean_error < best_mean_error:
+                    best_epoch = epoch
+                    best_mean_error = mean_error
+            except:
+                continue
     upscaled_model.load_weights(os.path.join(weights_dir, 'weights.{0}.hdf5'.format(best_epoch)), by_name=True)
     
     # Evaluate model precision
