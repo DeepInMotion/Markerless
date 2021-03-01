@@ -20,29 +20,50 @@ train = True #[True, False]
 evaluate = True #[True, False] 
 
 ## GPU usage
-gpus = "0" #["0,1", "0", "1", ""]
-gpu_memory_fraction = 0.8
+Dual_GPU = True
+if Dual_GPU:
+    # Assign GPU
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1" #[0,1"]
+else:  
+    # Assign GPU
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0" #["0", "1"]
+    gpu_memory_fraction = 0.8
 
-## Model configuration
-model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientHourglass Lite', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose'] 
-input_resolution = 128 
+## Model configuration 
+input_resolution = 128 #[Options for EfficientHourglass --> 128,160,192,224,256,288,320,356,384,(416),(448),(480),512]
+#input_resolution = [128, 160, 192, 224, 256, 288, 320, 356, 384, 512] #Vector for batch processing
 upscaled_output_resolution = input_resolution 
 
+model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose']
+if model_type == 'EfficientHourglass':
+    #Set architecture parameters for EfficientHourglass
+    architecture_type = 'B' #['L'= EfficientHourglass_lite, 'B'= EfficientHourglass_original, 'H' = EfficientHourglass_lite_original_hybrid, 'X' = EfficientHourglass-X]
+    # Default: B
+    efficientnet_variant = 0 #[Options --> 0, 1, 2, 3, 4] Default: 0
+    block_variant = 'Block1to6' #[Options --> 'Block1to5', (Block1to5b), 'Block1to6', 'Block1to7'] Default: Block1to6
+    # NOTE: If error running 'Block1to5', change file name in 'pretrained' to 'Block1to5b' and then change block_variant = 'Block1to5b'
+    GPU = None #[Options --> '_3090', 'None']
+
+#NOTE1: The 'pretrained' folder shows all possible combinations of architecture parameters (Total of 141 options).
+#NOTE2: When using 'EfficientHourglass', please make sure that architecture parameters is consistent with the file name in the 'pretrained' folder.
+# Example: 
+# File name --> MPII_224x224_EfficientHourglassB0_Block1to6_weights --> 
+# MPII_{input_resolution}x{input_resolution}_EfficientHourglass{architecture_type}{efficientnet_variant}_{block_variant}_weights{GPU} -->
+# input_resolution = 224, architecture_type = 'B', efficientnet_ variant = 0, block_variant = 'Block1to6', GPU = None
+
 ## Training hyperparameters
-training_batch_size = 20 
+training_batch_size = 16 
 start_epoch = 0 
-num_epochs = 100 
+num_epochs = 50 
 
 # Static hyperparameters
 
 ## Model configuration
 raw_output_resolution = {'EfficientHourglass': int(input_resolution / 4), 
-                        'EfficientHourglass Lite': int(input_resolution / 4),
                         'EfficientPose': int(input_resolution / 8), 
                         'EfficientPose Lite': int(input_resolution / 8), 
                         'CIMA-Pose': int(input_resolution / 8)}[model_type] 
-training_output_layer = {'EfficientHourglass': 'stage1_confs_tune', #ENSURE CONSISTENCY WITH LAYER NAMING
-                        'EfficientHourglass Lite': 'stage1_confs_tune', #ENSURE CONSISTENCY WITH LAYER NAMING
+training_output_layer = {'EfficientHourglass': 'stage1_confs_tune', #ENSURE CONSISTENCY WITH LAYER NAMING, DONE
                         'EfficientPose': 'pass3_detection2_confs_tune', 
                         'EfficientPose Lite': 'pass3_detection2_confs_tune', 
                         'CIMA-Pose': 'stage2_confs_tune'}[model_type]
@@ -53,18 +74,33 @@ training_output_index = {'EfficientHourglass': 0,
                         'CIMA-Pose': 1}[model_type] 
 evaluation_output_index = None
 supply_pafs = {'EfficientHourglass': False, 
-               'EfficientHourglass Lite': False,
                'EfficientPose': True, 
                'EfficientPose Lite': True, 
                'CIMA-Pose': False}[model_type]
 output_type = {'EfficientHourglass': 'EH-1-TUNE', 
-               'EfficientHourglass Lite': 'EH-1-TUNE',
                'EfficientPose': 'EP-1+2-PAFS-TUNE', 
                'EfficientPose Lite': 'EP-1+2-PAFS-TUNE', 
                'CIMA-Pose': 'CP-2-TUNE'}[model_type]
 
 ## Train hyperparameters
-schedule = {16: [(1.8, 0.87, 0, None), (1.64, 0.79, 2, None), (1.48, 0.71, 6, None),(1.32, 0.625, 14, None),(1.25, 0.563, 22, None),(1.163, 0.547, 30, None),(1.075, 0.532, 38, None), (0.988, 0.516, 46, None), (0.9, 0.5, 54, None)], 
+if model_type == 'EfficientHourglass':
+    # Vector description --> (sigma, None, epoch, None)
+    # NOTE: If comparing models across different resolution, make sure that all sigma values are scaled to the raw_output_resolution
+    schedule = {32: [(3.5, None, 0, None),(3, None, 2, None),(2.5, None, 4, None),(2, None, 6, None),(1.75, None, 8, None),(1.625, None, 12, None),(1.5, None, 16, None),(1.375, None, 20, None),(1.25, None, 25, None),(1.125, None, 30, None),(1, None, 35, None),(1, None, 40, None)],
+                40: [(4.375, None, 0, None),(3.75, None, 2, None),(3.125, None, 4, None),(2.5, None, 6, None),(2.1875, None, 8, None),(2.03125, None, 12, None),(1.875, None, 16, None),(1.71875, None, 20, None),(1.5625, None, 25, None),(1.40625, None, 30, None),(1.25, None, 35, None),(1.09375, None, 40, None)],
+                48: [(5.25, None, 0, None),(4.5, None, 2, None),(3.75, None, 4, None),(3, None, 6, None),(2.625, None, 8, None),(2.4375, None, 12, None),(2.25, None, 16, None),(2.0625, None, 20, None),(1.875, None, 25, None),(1.6875, None, 30, None),(1.5, None, 35, None),(1.3125, None, 40, None)],
+                56: [(6.125, None, 0, None),(5.25, None, 2, None),(4.375, None, 4, None),(3.5, None, 6, None),(3.0625, None, 8, None),(2.84375, None, 12, None),(2.625, None, 16, None),(2.40625, None, 20, None),(2.1875, None, 25, None),(1.96875, None, 30, None),(1.75, None, 35, None),(1.53125, None, 40, None)],
+                64: [(7.0, None, 0, None),(6.0, None, 2, None),(5.0, None, 4, None),(4.0, None, 6, None),(3.5, None, 8, None),(3.25, None, 12, None),(3.0, None, 16, None),(2.75, None, 20, None),(2.5, None, 25, None),(2.25, None, 30, None),(2, None, 35, None),(1.75, None, 40, None)],
+                72: [(7.875, None, 0, None),(6.75, None, 2, None),(5.625, None, 4, None),(4.5, None, 6, None),(3.9375, None, 8, None),(3.65625, None, 12, None),(3.375, None, 16, None),(3.09375, None, 20, None),(2.8125, None, 25, None),(2.53125, None, 30, None),(2.25, None, 35, None),(1.96875, None, 40, None)],
+                80: [(8.75, None, 0, None),(7.5, None, 2, None),(6.25, None, 4, None),(5, None, 6, None),(4.375, None, 8, None),(4.0625, None, 12, None),(3.75, None, 16, None),(3.4375, None, 20, None),(3.125, None, 25, None),(2.8125, None, 30, None),(2.5, None, 35, None),(2.1875, None, 40, None)],
+                88: [(9.625, None, 0, None),(8.25, None, 2, None),(6.875, None, 4, None),(5.5, None, 6, None),(4.8125, None, 8, None),(4.46875, None, 12, None),(4.125, None, 16, None),(3.78125, None, 20, None),(3.4375, None, 25, None),(3.09375, None, 30, None),(2.75, None, 35, None),(2.40625, None, 40, None)],
+                96: [(10.5, None, 0, None),(9.0, None, 2, None),(7.5, None, 4, None),(6, None, 6, None),(5.25, None, 8, None),(4.875, None, 12, None),(4.5, None, 16, None),(4.125, None, 20, None),(3.75, None, 25, None),(3.375, None, 30, None),(3, None, 35, None),(2.625, None, 40, None)],
+                104: [(11.375, None, 0, None),(9.75, None, 2, None),(8.125, None, 4, None),(6.5, None, 6, None),(5.6875, None, 8, None),(5.28125, None, 12, None),(4.875, None, 16, None),(4.46875, None, 20, None),(4.0625, None, 25, None),(3.65625, None, 30, None),(3.25, None, 35, None),(2.84375, None, 40, None)],
+                112: [(12.25, None, 0, None),(10.5, None, 2, None),(8.75, None, 4, None),(7, None, 6, None),(6.125, None, 8, None),(5.6875, None, 12, None),(5.25, None, 16, None),(4.8125, None, 20, None),(4.375, None, 25, None),(3.9375, None, 30, None),(3.5, None, 35, None),(3.0625, None, 40, None)],
+                120: [(13.125, None, 0, None),(11.25, None, 2, None),(9.375, None, 4, None),(7.5, None, 6, None),(6.5625, None, 8, None),(6.09375, None, 12, None),(5.625, None, 16, None),(5.15625, None, 20, None),(4.6875, None, 25, None),(4.21875, None, 30, None),(3.75, None, 35, None),(3.28125, None, 40, None)],
+                128: [(14, None, 0, None),(12, None, 2, None),(10, None, 4, None),(8, None, 6, None),(7, None, 8, None),(6.5, None, 12, None),(6, None, 16, None),(5.5, None, 20, None),(5, None, 25, None),(4.5, None, 30, None),(4, None, 35, None),(3.5, None, 40, None)]}[raw_output_resolution]
+else:
+    schedule = {16: [(1.8, 0.87, 0, None), (1.64, 0.79, 2, None), (1.48, 0.71, 6, None),(1.32, 0.625, 14, None),(1.25, 0.563, 22, None),(1.163, 0.547, 30, None),(1.075, 0.532, 38, None), (0.988, 0.516, 46, None), (0.9, 0.5, 54, None)], 
             28: [(3.1, 1.53, 0, None),(2.6, 1.31, 2, None),(2.2, 1.09, 6, None),(1.75, 0.875, 14, None),(1.53, 0.788, 22, None),(1.422, 0.766, 30, None),(1.313, 0.744, 38, None),(1.203, 0.722, 46, None),(1.1, 0.7, 54, None)],
             32: [(3.5, 1.75, 0, None), (3.0, 1.5, 2, None), (2.5, 1.25, 6, None),(2.0, 1.0, 14, None),(1.75, 0.9, 22, None),(1.625, 0.875, 30, None),(1.5, 0.85, 38, None), (1.375, 0.825, 46, None), (1.25, 0.8, 54, None)],
             46: [(5.0, 2.5, 0, None), (4.3, 2.15, 2, None), (3.6, 1.8, 6, None),(2.875, 1.4, 14, None),(2.5, 1.3, 22, None),(2.336, 1.258, 30, None),(2.156, 1.222, 38, None), (1.977, 1.186, 46, None), (1.797, 1.15, 54, None)],
@@ -105,8 +141,7 @@ import utils.summary as summary
 import utils.evaluation as evaluation
 from utils.callbacks import EvaluationHistory
 from utils.losses import euclidean_loss
-if model_type == 'EfficientHourglass': import models.efficienthourglass as m #ENSURE CONSISTENT NAMING OF SCRIPT
-elif model_type == 'EfficientHourglass Lite': import models.efficienthourglass_lite as m #ENSURE CONSISTENT NAMING OF SCRIPT
+if model_type == 'EfficientHourglass': import models.EfficientHourglass as m #ENSURE CONSISTENT NAMING OF SCRIPT, DONE
 elif model_type == 'EfficientPose': import models.efficientpose as m
 elif model_type == 'EfficientPose Lite': import models.efficientpose_lite as m
 elif model_type == 'CIMA-Pose': import models.cima_pose as m 
@@ -192,8 +227,17 @@ val_datagenerator = datagenerator.DataGenerator(df=val_df, settings=datagenerato
     
 """ Initialize model """
 
-convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS)
-model = convnet.model
+if model_type == 'EfficientHourglass': 
+    convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS, architecture_type = architecture_type, efficientnet_variant = efficient_variant, block_variant = block_variant, GPU = GPU)
+else:
+    convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS)
+
+if Dual_GPU:
+    with tf.device('/cpu:0'):
+        model0 = convnet.model
+    model = multi_gpu_model(model0, gpus=2)
+else:
+    model = convnet.model
 num_parameters, num_flops, num_ms, devices = summary.summary(model, upscaled_output_resolution=upscaled_output_resolution)
 
 
