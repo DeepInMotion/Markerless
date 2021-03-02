@@ -13,20 +13,22 @@ sys.path.append(project_dir)
 # Options
 
 ## Name of experiment
-experiment_name = '25112020 0800 EfficientPose Det Lite'
+experiment_name = '02032021 1549 MPII_128x128_EfficientHourglassB0_Block1to6_weights'
 
 ## Flags
 train = True #[True, False] 
 evaluate = True #[True, False] 
 
 ## GPU usage
-Dual_GPU = True
+Dual_GPU = False #True
 if Dual_GPU:
     # Assign GPU
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1" #[0,1"]
+    gpus = "0,1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpus
 else:  
     # Assign GPU
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0" #["0", "1"]
+    gpus = "0" #"0", "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpus
     gpu_memory_fraction = 0.8
 
 ## Model configuration 
@@ -34,7 +36,7 @@ input_resolution = 128 #[Options for EfficientHourglass --> 128,160,192,224,256,
 #input_resolution = [128, 160, 192, 224, 256, 288, 320, 356, 384, 512] #Vector for batch processing
 upscaled_output_resolution = input_resolution 
 
-model_type = 'EfficientPose Lite' # ['EfficientHourglass', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose']
+model_type = 'EfficientHourglass' # ['EfficientHourglass', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose']
 if model_type == 'EfficientHourglass':
     #Set architecture parameters for EfficientHourglass
     architecture_type = 'B' #['L'= EfficientHourglass_lite, 'B'= EfficientHourglass_original, 'H' = EfficientHourglass_lite_original_hybrid, 'X' = EfficientHourglass-X]
@@ -152,9 +154,6 @@ import project_constants as pc
 
 """ GPU specifications  """
 
-# Assign GPU
-os.environ["CUDA_VISIBLE_DEVICES"] = gpus
-
 # Specify GPU usage
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -228,7 +227,8 @@ val_datagenerator = datagenerator.DataGenerator(df=val_df, settings=datagenerato
 """ Initialize model """
 
 if model_type == 'EfficientHourglass': 
-    convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS, architecture_type = architecture_type, efficientnet_variant = efficient_variant, block_variant = block_variant, GPU = GPU)
+    convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS, architecture_type = architecture_type, efficientnet_variant = efficientnet_variant, block_variant = block_variant, GPU = GPU)
+    convnet.model.save(os.path.join(experiment_dir, 'model.h5'))
 else:
     convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS)
 
