@@ -82,7 +82,7 @@ def summary(raw_model, upscaled_output_resolution=False, flops=True, latency=Tru
     devices = 'GPU(s): {0}, CPU(s): {1}'.format(gpus, cpus)
         
     # Display Keras model summary
-    model.summary(140)
+    model.summary(200)
     num_parameters = model.count_params()
     
     # Display FLOPs

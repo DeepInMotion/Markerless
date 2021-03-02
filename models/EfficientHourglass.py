@@ -1,6 +1,6 @@
 import tensorflow
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, ReLU, Conv2D, DepthwiseConv2D, Conv2DTranspose, Concatenate, BatchNormalization, Add, Multiply, GlobalAveragePooling2D, Activation, Reshape, UpSampling2D
+from tensorflow.keras.layers import Input, ReLU, Conv2D, DepthwiseConv2D, Conv2DTranspose, Concatenate, BatchNormalization, Add, Multiply, GlobalAveragePooling2D, Activation, Reshape, UpSampling2D, Lambda
 import math
 
 import os,sys,inspect
@@ -14,8 +14,8 @@ from tensorflow.python.keras import backend as K
 
 from models.efficientnet_lite import efficientnet_lite
 #from models.efficientnet_X import efficientnet_X 
-from models.efficientnets.efficientnetv1.keras import EfficientNetB0, EfficientNetB1, EfficientNetB2, EfficientNetB3, EfficientNetB4 
-from models.efficientnets.efficientnetv1.keras import preprocess_input as efficientnet_preprocess_input
+from models.efficientnets.efficientnetv1.tfkeras import EfficientNetB0, EfficientNetB1, EfficientNetB2, EfficientNetB3, EfficientNetB4 
+from models.efficientnets.efficientnetv1.tfkeras import preprocess_input as efficientnet_preprocess_input
 
 class architecture:
     def __init__(self, input_resolution, num_body_parts, num_segments, output_resolution=None, architecture_type='B', efficientnet_variant=0, block_variant='Block1to6', GPU=None):
@@ -37,7 +37,7 @@ class architecture:
             self.output_size = (int(self.input_resolution/self.scale_factor), int(self.input_resolution/self.scale_factor))
         else:
             self.output_size = (self.output_resolution, self.output_resolution)
-        self.pretrained_path = os.path.join('models/pretrained', 'MPII_{}x{}_EfficientHourglass{}{}_{}_weights{}.hdf5'.format('' + str(self.input_resolution), str(self.input_resolution), self.model_type, str(self.efficientnet_variant), self.block_variant, self.GPU))
+        self.pretrained_path = os.path.join('models/pretrained', 'MPII_{}x{}_EfficientHourglass{}{}_{}_weights{}.hdf5'.format('' + str(self.input_resolution), str(self.input_resolution), self.model_type, str(self.efficientnet_variant), self.block_variant, self.GPU if self.GPU is not None else ''))
         
         # Initialize parameters and weights
         trainable = True
@@ -59,37 +59,37 @@ class architecture:
         self.model_outputs = []
         
         # Initilize EfficientNet back-end and input layer
-        if(self.model_type = 'L' or 'H'):
-            efficientnet_module = efficientnet_lite.efficientnet_lite(self.efficientnet_variant).model 
+        if(self.model_type == 'L' or self.model_type == 'H'):
+            efficientnet_module = efficientnet_lite.efficientnet_lite(self.efficientnet_variant, input_resolution=self.input_resolution).model 
             input_layer = efficientnet_module.layers[0].input
-            self.efficientnet_features = {0: {'res1': 25, 'res2': 42, 'res3': 94, 'res4': 129}, 1: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 2: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 3: {'res1': 34, 'res2': 60, 'res3': 148, 'res4': 201}, 4: {'res1': 43, 'res2': 78, 'res3': 184, 'res4': 255}}.[self.efficientnet_variant] 
-        elif(self.model_type = 'X'): #TO BE GENERATED
-            efficientnet_module = efficientnet_X.efficientnet_lite(self.efficientnet_variant).model #TO BE GENERATED 
+            self.efficientnet_features = {0: {'res1': 25, 'res2': 42, 'res3': 94, 'res4': 129}, 1: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 2: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 3: {'res1': 34, 'res2': 60, 'res3': 148, 'res4': 201}, 4: {'res1': 43, 'res2': 78, 'res3': 184, 'res4': 255}}[self.efficientnet_variant] 
+        elif(self.model_type == 'X'): #TO BE GENERATED
+            efficientnet_module = efficientnet_X.efficientnet_lite(self.efficientnet_variant, input_resolution=self.input_resolution).model #TO BE GENERATED 
             input_layer = efficientnet_module.layers[0].input
             #self.efficientnet_features = {0: {'res1': 25, 'res2': 42, 'res3': 94, 'res4': 129}, 1: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 2: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 3: {'res1': 34, 'res2': 60, 'res3': 148, 'res4': 201}, 4: {'res1': 43, 'res2': 78, 'res3': 184, 'res4': 255}}.[self.efficientnet_variant]
-        elif(self.model_type = 'B')
-            input_shape = (None, None, 3)
+        else:
+            input_shape = (self.input_resolution, self.input_resolution, 3)
             input_layer = Input(shape=input_shape, name='input_res1')
-            if(self.efficientnet_variant = 0):
+            if(self.efficientnet_variant == 0):
                 efficientnet_module = EfficientNetB0(include_top=False, weights='imagenet', input_tensor=input_layer, pooling=None)
-            elif(self.efficientnet_variant = 1):
+            elif(self.efficientnet_variant == 1):
                 efficientnet_module = EfficientNetB1(include_top=False, weights='imagenet', input_tensor=input_layer, pooling=None)
-            elif(self.efficientnet_variant = 2):
+            elif(self.efficientnet_variant == 2):
                 efficientnet_module = EfficientNetB2(include_top=False, weights='imagenet', input_tensor=input_layer, pooling=None)
-            elif(self.efficientnet_variant = 3):
+            elif(self.efficientnet_variant == 3):
                 efficientnet_module = EfficientNetB3(include_top=False, weights='imagenet', input_tensor=input_layer, pooling=None)
-            elif(self.efficientnet_variant = 4):
+            elif(self.efficientnet_variant == 4):
                 efficientnet_module = EfficientNetB4(include_top=False, weights='imagenet', input_tensor=input_layer, pooling=None)
-            if(self.block_variant = 'Block1to7'):
-                self.efficientnet_features = {0: {'res1': 41, 'res2': 69, 'res3': 155, 'res4': 213}, 1: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 328}, 2: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 328}, 3: {'res1': 68, 'res2': 111, 'res3': 257, 'res4': 373}, 4: {'res1': 83, 'res2': 141, 'res3': 317, 'res4': 463}}.[self.efficientnet_variant]  
+            if(self.block_variant == 'Block1to7'):
+                self.efficientnet_features = {0: {'res1': 41, 'res2': 69, 'res3': 155, 'res4': 213}, 1: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 328}, 2: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 328}, 3: {'res1': 68, 'res2': 111, 'res3': 257, 'res4': 373}, 4: {'res1': 83, 'res2': 141, 'res3': 317, 'res4': 463}}[self.efficientnet_variant]  
             else:
-                self.efficientnet_features = {0: {'res1': 41, 'res2': 69, 'res3': 155, 'res4': 129}, 1: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 300}, 2: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 300}, 3: {'res1': 68, 'res2': 111, 'res3': 257, 'res4': 330}, 4: {'res1': 83, 'res2': 141, 'res3': 317, 'res4': 390}}.[self.efficientnet_variant]
+                self.efficientnet_features = {0: {'res1': 41, 'res2': 69, 'res3': 155, 'res4': 213}, 1: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 300}, 2: {'res1': 68, 'res2': 111, 'res3': 227, 'res4': 300}, 3: {'res1': 68, 'res2': 111, 'res3': 257, 'res4': 330}, 4: {'res1': 83, 'res2': 141, 'res3': 317, 'res4': 390}}[self.efficientnet_variant]
         
         # Set block-variant parameter
-        if(self.block_variant = 'Block1to5'):
+        if(self.block_variant == 'Block1to5'):
             block_num = 3
             block_bridge = 2
-        elif(self.block_variant = 'Block1to5b'):
+        elif(self.block_variant == 'Block1to5b'):
             block_num = 3
             block_bridge = 3
         else:
@@ -111,7 +111,7 @@ class architecture:
         
         # Transpose upscaling
         for upsamp in range(1, block_num):
-            Block = self.Transpose_concat_squeeze(feature_maps1 = Block, feature_maps2 = Bridge_block[Block_num-upsamp-1], filters = map_numb_block[Block_num-upsamp-1], se_ratio = SE_ratio[Block_num-upsamp-1], trainable = trainable)
+            Block = self.Transpose_concat_squeeze(feature_maps1 = Block, feature_maps2 = Bridge_block[block_num-upsamp-1], filters = map_numb_block[block_num-upsamp-1], se_ratio = SE_ratio[block_num-upsamp-1], trainable = trainable)
         
         # Output and upscale stage for test
         if not self.upscale:
@@ -128,12 +128,12 @@ class architecture:
     def Transpose_concat_squeeze(self, feature_maps1, feature_maps2, filters, se_ratio, trainable):
         Upsamp_BN = Conv2DTranspose(filters, kernel_size = (4, 4), strides = (2, 2), padding='same', trainable = trainable)(feature_maps1)
         Upsamp_BN = BatchNormalization()(Upsamp_BN)
-        if(self.model_type = 'L'):
+        if(self.model_type == 'L'):
             Upsamp_BN = ReLU(max_value = 6)(Upsamp_BN)
         else:
             Upsamp_BN = Swish('swish1')(Upsamp_BN)
         output_block = Add()([feature_maps2, Upsamp_BN])
-        if not(self.model_type = 'L')
+        if not(self.model_type == 'L'):
             output_block = self.SE_EfficientNet(input_x = output_block, input_filters = output_block.shape.as_list()[-1], se_ratio = se_ratio, trainable = trainable)
         return output_block
         
@@ -145,7 +145,7 @@ class architecture:
         else:
             ConvBN1 = Conv2D(factor*filters, (1, 1), name = name + '_BN1', padding='same', trainable = trainable)(feature_maps)
             ConvBN1 = BatchNormalization()(ConvBN1)
-            if(self.model_type = 'L' or 'H'):
+            if(self.model_type == 'L' or self.model_type == 'H'):
                 ConvBN1 = ReLU(max_value = 6)(ConvBN1)
             else:
                 ConvBN1 = Swish('swish1')(ConvBN1)
@@ -153,7 +153,7 @@ class architecture:
         # Depthwise convolutions
         dConv = DepthwiseConv2D(kernel_size = (5, 5), name = name + '_dConv', padding='same', trainable = trainable)(ConvBN1)
         dConv = BatchNormalization()(dConv)
-        if(self.model_type = 'L'):
+        if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(dConv)
         else:
             output = Swish('swish1')(dConv)
@@ -163,11 +163,11 @@ class architecture:
         # Bottelneck
         output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', trainable = trainable)(output)
         output = BatchNormalization()(output)
-        if(self.model_type = 'L'):
+        if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(output)
         else:
             output = Swish('swish1')(output)
-        return ConvBN2; 
+        return output 
     
     
     def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable):
@@ -239,7 +239,7 @@ def preprocess_input(x):
     preprocessed: ndarray
         Numpy array pre-processed according to EfficientNet (Lite) standard
     """
-    if(self.model_type = 'L'):
+    if(self.model_type == 'L'):
         return efficientnet_lite.preprocess_input(x)
     else:
         return efficientnet_preprocess_input(x)
