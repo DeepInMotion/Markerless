@@ -66,7 +66,7 @@ class architecture:
         elif(self.model_type == 'X'): #TO BE GENERATED
             efficientnet_module = efficientnet_X.efficientnet_lite(self.efficientnet_variant, input_resolution=self.input_resolution).model #TO BE GENERATED 
             input_layer = efficientnet_module.layers[0].input
-            #self.efficientnet_features = {0: {'res1': 25, 'res2': 42, 'res3': 94, 'res4': 129}, 1: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 2: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 3: {'res1': 34, 'res2': 60, 'res3': 148, 'res4': 201}, 4: {'res1': 43, 'res2': 78, 'res3': 184, 'res4': 255}}.[self.efficientnet_variant]
+            #self.efficientnet_features = {0: {'res1': 25, 'res2': 42, 'res3': 94, 'res4': 129}, 1: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 2: {'res1': 34, 'res2': 60, 'res3': 130, 'res4': 174}, 3: {'res1': 34, 'res2': 60, 'res3': 148, 'res4': 201}, 4: {'res1': 43, 'res2': 78, 'res3': 184, 'res4': 255}}[self.efficientnet_variant]
         else:
             input_shape = (self.input_resolution, self.input_resolution, 3)
             input_layer = Input(shape=input_shape, name='input_res1')
@@ -122,7 +122,7 @@ class architecture:
             Conf_maps = deconvX
         self.model_outputs.append(Conf_maps) 
         
-        # Build CIMA-Pose model
+        # Build EfficientHourglass model
         self.model = Model(input_layer, self.model_outputs, name='EfficientHourglass')
 
     def Transpose_concat_squeeze(self, feature_maps1, feature_maps2, filters, se_ratio, trainable):
@@ -158,7 +158,7 @@ class architecture:
         else:
             output = Swish('swish1')(dConv)
             input_filters = output.shape.as_list()[-1]
-            output = self.SE_EfficientNet(input_x = dConv, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable)
+            output = self.SE_EfficientNet(input_x = output, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable)
         
         # Bottelneck
         output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', trainable = trainable)(output)
@@ -171,6 +171,7 @@ class architecture:
     
     
     def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable):
+        
         num_reduced_filters = max(
             1, int(input_filters / se_ratio))
         if K.image_data_format() == "channels_first":
@@ -239,8 +240,10 @@ def preprocess_input(x):
     preprocessed: ndarray
         Numpy array pre-processed according to EfficientNet (Lite) standard
     """
-    if(self.model_type == 'L'):
+    if(self.model_type == 'L' or self.model_type == 'H'):
         return efficientnet_lite.preprocess_input(x)
+    elif(self.model_type == 'X'): #TO BE GENERATED
+        return False
     else:
         return efficientnet_preprocess_input(x)
     
