@@ -158,7 +158,7 @@ class architecture:
         else:
             output = Swish('swish1')(dConv)
             input_filters = output.shape.as_list()[-1]
-            output = self.SE_EfficientNet(input_x = dConv, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable)
+            output = self.SE_EfficientNet(input_x = output, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable)
         
         # Bottelneck
         output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', trainable = trainable)(output)
@@ -171,6 +171,7 @@ class architecture:
     
     
     def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable):
+        
         num_reduced_filters = max(
             1, int(input_filters / se_ratio))
         if K.image_data_format() == "channels_first":
@@ -239,8 +240,10 @@ def preprocess_input(x):
     preprocessed: ndarray
         Numpy array pre-processed according to EfficientNet (Lite) standard
     """
-    if(self.model_type == 'L'):
+    if(self.model_type == 'L' or self.model_type == 'H'):
         return efficientnet_lite.preprocess_input(x)
+    elif(self.model_type == 'X'): #TO BE GENERATED
+        return False
     else:
         return efficientnet_preprocess_input(x)
     
