@@ -13,7 +13,7 @@ sys.path.append(project_dir)
 # Options
 
 ## Name of experiment
-experiment_name = '02032021 1549 MPII_128x128_EfficientHourglassB0_Block1to6_weights'
+experiment_name = '03032021 1709 MPII_128x128_EfficientHourglassB0_Block1to6_weights'
 
 ## Flags
 train = True #[True, False] 
