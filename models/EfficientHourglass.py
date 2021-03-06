@@ -106,12 +106,12 @@ class architecture:
             
             # Bridge MBconv blocks
             if(block < block_bridge):
-                Bridge = self.MBconv(feature_maps=Block, filters=map_numb_block[block], name = 'Bridge1' + '_Res{}'.format(block+1), factor = MBconv_factor[block], se_ratio = SE_ratio[block], trainable = trainable)
+                Bridge = self.MBconv(feature_maps=Block, filters=map_numb_block[block], name = 'Bridge1' + '_Res{}'.format(block+1), factor = MBconv_factor[block], se_ratio = SE_ratio[block], trainable = trainable, bridge_num = block)
                 Bridge_block.append(Bridge)
         
         # Transpose upscaling
         for upsamp in range(1, block_num):
-            Block = self.Transpose_concat_squeeze(feature_maps1 = Block, feature_maps2 = Bridge_block[block_num-upsamp-1], filters = map_numb_block[block_num-upsamp-1], se_ratio = SE_ratio[block_num-upsamp-1], trainable = trainable)
+            Block = self.Transpose_concat_squeeze(feature_maps1 = Block, feature_maps2 = Bridge_block[block_num-upsamp-1], filters = map_numb_block[block_num-upsamp-1], se_ratio = SE_ratio[block_num-upsamp-1], trainable = trainable, transpose_num = upsamp, BN_num = 3*block_bridge)
         
         # Output and upscale stage for test
         if not self.upscale:
@@ -125,26 +125,26 @@ class architecture:
         # Build EfficientHourglass model
         self.model = Model(input_layer, self.model_outputs, name='EfficientHourglass')
 
-    def Transpose_concat_squeeze(self, feature_maps1, feature_maps2, filters, se_ratio, trainable):
-        Upsamp_BN = Conv2DTranspose(filters, kernel_size = (4, 4), strides = (2, 2), padding='same', trainable = trainable)(feature_maps1)
-        Upsamp_BN = BatchNormalization()(Upsamp_BN)
+    def Transpose_concat_squeeze(self, feature_maps1, feature_maps2, filters, se_ratio, trainable, transpose_num, BN_num):
+        Upsamp_BN = Conv2DTranspose(filters, kernel_size = (4, 4), strides = (2, 2), name = 'conv2d_transpose_'.format('' + str(transpose_num)), padding='same', trainable = trainable)(feature_maps1)
+        Upsamp_BN = BatchNormalization(name = 'batch_normalization_'.format('' + str(BN_num+1)))(Upsamp_BN)
         if(self.model_type == 'L'):
             Upsamp_BN = ReLU(max_value = 6)(Upsamp_BN)
         else:
             Upsamp_BN = Swish('swish1')(Upsamp_BN)
-        output_block = Add()([feature_maps2, Upsamp_BN])
+        output_block = Add(name = 'add_'.format('' + str(transpose_num)))([feature_maps2, Upsamp_BN])
         if not(self.model_type == 'L'):
             output_block = self.SE_EfficientNet(input_x = output_block, input_filters = output_block.shape.as_list()[-1], se_ratio = se_ratio, trainable = trainable)
         return output_block
         
-    def MBconv(self, feature_maps, filters, name, factor, se_ratio, trainable):
+    def MBconv(self, feature_maps, filters, name, factor, se_ratio, trainable, bridge_num):
         
         # Inverted bottelneck (expand features)
         if(factor==1):
             ConvBN1 = feature_maps
         else:
             ConvBN1 = Conv2D(factor*filters, (1, 1), name = name + '_BN1', padding='same', trainable = trainable)(feature_maps)
-            ConvBN1 = BatchNormalization()(ConvBN1)
+            ConvBN1 = BatchNormalization(name = 'batch_normalization_'.format('' + str(3*bridge_num+1)))(ConvBN1)
             if(self.model_type == 'L' or self.model_type == 'H'):
                 ConvBN1 = ReLU(max_value = 6)(ConvBN1)
             else:
@@ -152,26 +152,25 @@ class architecture:
         
         # Depthwise convolutions
         dConv = DepthwiseConv2D(kernel_size = (5, 5), name = name + '_dConv', padding='same', trainable = trainable)(ConvBN1)
-        dConv = BatchNormalization()(dConv)
+        dConv = BatchNormalization(name = 'batch_normalization_'.format('' + str(3*bridge_num+2)))(dConv)
         if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(dConv)
         else:
             output = Swish('swish1')(dConv)
             input_filters = output.shape.as_list()[-1]
-            output = self.SE_EfficientNet(input_x = output, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable)
+            output = self.SE_EfficientNet(input_x = output, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable, bridge_num = bridge_num)
         
         # Bottelneck
         output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', trainable = trainable)(output)
-        output = BatchNormalization()(output)
+        output = BatchNormalization(name = 'batch_normalization_'.format('' + str(3*bridge_num+3)))(output)
         if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(output)
         else:
             output = Swish('swish1')(output)
         return output 
     
-    
-    def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable):
-        
+    def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable, bridge_num):
+
         num_reduced_filters = max(
             1, int(input_filters / se_ratio))
         if K.image_data_format() == "channels_first":
@@ -191,6 +190,7 @@ class architecture:
                 kernel_size=[1, 1],
                 strides=[1, 1],
                 trainable = trainable,
+                name = 'conv2d_'.format('' + str(2*bridge_num+1)),
                 #kernel_initializer = kernel_initializer,
                 padding='same',
                 use_bias=True
@@ -203,12 +203,13 @@ class architecture:
                 kernel_size=[1, 1],
                 strides=[1, 1],
                 trainable = trainable,
+                name = 'conv2d_'.format('' + str(2*bridge_num+2)),
                 #kernel_initializer = kernel_initializer,
                 padding='same',
                 use_bias=True
             )(x)
         x = Activation('sigmoid')(x)
-        output_x = Multiply()([x, input_x])
+        output_x = Multiply(name = 'multiply_'.format('' + str(bridge_num+1)))([x, input_x])
 
         return output_x  
         
