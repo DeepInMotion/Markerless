@@ -132,6 +132,7 @@ import tensorflow.keras as keras
 import pandas as pd
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.utils import multi_gpu_model
 from alt_model_checkpoint.tensorflow import AltModelCheckpoint
 import csv
 import json
