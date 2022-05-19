@@ -99,7 +99,7 @@ class DataGenerator:
             
         return img
     
-    def labels(self, confs, pafs=None, body_segments=None, model_type='CP-CIMA'):
+    def labels(self, confs, pafs=None, body_segments=None, model_type='EH-1-TUNE'):
         
         # One sigma value
         conf = confs[0]
