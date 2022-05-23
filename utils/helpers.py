@@ -6,15 +6,13 @@ from PIL import ImageDraw
 import matplotlib.pyplot as plt
 import os
 from scipy.ndimage.filters import gaussian_filter
+from scipy import linalg
 from numpy import random
 import math
 random.seed(42)
 
 def confidence(p1_x, p1_y, p0_x, p0_y, sigma):
-    l2_norm = np.square(np.linalg.norm(np.asarray([p1_x,p1_y])-np.asarray([p0_x,p0_y]), ord=2))
-    confidence = np.exp(-l2_norm/np.square(sigma))
-    
-    return confidence
+    return math.exp(-(linalg.norm(np.asarray([p1_x,p1_y])-np.asarray([p0_x,p0_y]), ord=2)**2)/(sigma**2))
 
 def make_conf_map(p0_x, p0_y, height, width, sigma):
     if p0_x == 0 and p0_y == 0:
