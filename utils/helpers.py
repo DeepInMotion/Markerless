@@ -2,17 +2,41 @@ import numpy as np
 import skimage.transform
 import skimage.util
 import skimage.io
+import tensorflow as tf
 from PIL import ImageDraw
 import matplotlib.pyplot as plt
 import os
-from scipy.ndimage.filters import gaussian_filter
-from scipy import linalg
+from scipy.ndimage.filters import gaussian_filter, median_filter, percentile_filter
 from numpy import random
 import math
 random.seed(42)
 
 def confidence(p1_x, p1_y, p0_x, p0_y, sigma):
-    return math.exp(-(linalg.norm(np.asarray([p1_x,p1_y])-np.asarray([p0_x,p0_y]), ord=2)**2)/(sigma**2))
+    """ Calculate confidence value at point p1, relative to the ground truth point p0. 
+    Corresponds to S_j,k in the CMU-pose paper.
+    
+    Parameters
+    ----------
+    p0_abs: (int, int)
+        Grount truth point with (x, y) absolute coordinates
+    p1_abs: (int, int)
+        A point with (x,y) absolute coordinates where confidence is measured
+    sigma: float
+        Standard diviation controlling the spread of confidence around the ground truth point.
+        Check: https://github.com/michalfaber/keras_Realtime_Multi-Person_Pose_Estimation/issues/8
+        
+    Returns
+    ----------
+    confidence: float
+        A value between 0 and 1 representing the confidence at point p1
+    """
+    
+    p0_abs = np.asarray([p0_x, p0_y])
+    p1_abs = np.asarray([p1_x, p1_y])
+    l2_norm = np.square(np.linalg.norm(np.subtract(p1_abs, p0_abs), ord=2))
+    confidence = np.exp(- np.divide(l2_norm, np.square(sigma)))
+    
+    return confidence
 
 def make_conf_map(p0_x, p0_y, height, width, sigma):
     if p0_x == 0 and p0_y == 0:
@@ -21,6 +45,7 @@ def make_conf_map(p0_x, p0_y, height, width, sigma):
     xs = np.linspace(0, width, width, endpoint=False, dtype=int)
     ys = np.linspace(0, height, height, endpoint=False, dtype=int)
     
+
     return confidence(xs[None, :], ys[:, None], p0_x, p0_y, sigma=sigma)
 
 def make_confidence_maps(points,  height, width, sigma):
@@ -336,26 +361,53 @@ def pad(source_array, target_height, target_width):
     
     return target_array
 
-def extract_point(conf, threshold, confidence=False):
+def extract_point(conf, threshold, idx, confidence=False):
+    soft_argmax = True
+    conf = np.array(conf)
     # conf: 2d confidence map of shape (height, width)
+    #bdp_factor = {0: 1.04, 1: 0.53, 2: 1.04, 3: 0.93, 4: 1.00, 5: 1.01, 6: 0.81, 7: 0.71, 8: 1.23, 9: 1.08, 10: 0.79, 11: 0.70, 12: 1.49, 13: 1.55, 14: 1.06, 15: 0.78, 16: 1.60, 17: 0.93, 18: 0.77}[idx]
+    bdp_factor = {0: 1.04, 1: 0.56, 2: 1.13, 3: 0.94, 4: 0.99, 5: 0.99, 6: 0.80, 7: 0.72, 8: 1.20, 9: 1.08, 10: 0.78, 11: 0.73, 12: 1.46, 13: 1.52, 14: 1.03, 15: 0.78, 16: 1.55, 17: 0.92, 18: 0.76, 19: 0.79, 20: 0.79, 21: 0.73, 22: 0.81, 23: 1.09, 24: 0.75, 25: 0.68, 26: 1.23, 27: 0.75, 28: 0.71}[idx]
+    output_width = int(conf.shape[1])
+    output_height = int(conf.shape[0])
+    sigma = bdp_factor*(output_width/32) 
+    #sigma = output_width/32
     
-    output_width = conf.shape[1]
-    output_height = conf.shape[0]
-    
-    # Apply gaussian filter
-    gauss = gaussian_filter(conf, sigma=1.)
-        
     # Locate peaks in confidence map
-    max_index = np.argmax(gauss)
-    peak_y = float(math.floor(max_index / output_width))
+    max_index = np.argmax(conf)
+    peak_y = math.floor(max_index / output_width)
     peak_x = max_index % output_width
+
+    # Verify confidence of prediction
+    conf_value = conf[int(peak_y),int(peak_x)]
     
     # Verify confidence of prediction
-    conf_value = gauss[int(peak_y),int(peak_x)]
+    conf_value = conf[int(peak_y),int(peak_x)]
     if conf_value < threshold:
         peak_x = 0.0
         peak_y = 0.0
     else:
+        if soft_argmax:
+            #Local soft-argmax
+            # Define beta and size of local square neighborhood
+            beta = 9.
+            num_pix = int(np.round(2*sigma)) #Change 4*sigma to 2*sigma for InMotion
+            num_pix1 = int(num_pix+1)
+            # Define start and end indx for local square neighborhood
+            rows_start = int(np.max([int(peak_y)-num_pix, 0]))
+            rows_end = int(np.min([int(peak_y)+num_pix1, output_height]))
+            cols_start = int(np.max([int(peak_x)-num_pix, 0]))
+            cols_end = int(np.min([int(peak_x)+num_pix1, output_width]))
+            # Define localsquare neigborhod 
+            loc_mat = conf[rows_start:rows_end,cols_start:cols_end]
+            y_ind = [i for i in range(rows_start,rows_end)]
+            x_ind = [j for j in range(cols_start,cols_end)]
+            posy, posx = np.meshgrid(y_ind, x_ind, indexing='ij')
+            # Compute local soft-argmax for neigborhood
+            a = np.exp(beta*loc_mat)
+            b = np.sum(a)
+            softmax = a/b
+            peak_x = np.sum(softmax*posx)
+            peak_y = np.sum(softmax*posy)
         peak_x += 0.5
         peak_y += 0.5
                 
@@ -366,3 +418,47 @@ def extract_point(conf, threshold, confidence=False):
         return peak_x, peak_y, conf_value
     else:
         return peak_x, peak_y
+    
+def get_elipse_bbox(x, y, radius=5):
+    return [(x - radius, y - radius), (x + radius, y + radius)]
+    
+def add_points(img, points, colors, custom_height=1024, custom_width=1024, radius=5):   
+    draw = ImageDraw.Draw(img)
+    
+    width = custom_width
+    height = custom_height
+    
+    for i, (px, py) in enumerate(points):
+        px = float(px)
+        py = float(py)
+        px *= width
+        py *= height
+                
+        bbox = get_elipse_bbox(px, py, radius=radius)
+        
+        draw.ellipse(bbox, fill=colors[i])
+        
+    return img
+
+def add_lines(img, points, colors, associations, custom_height=1024, custom_width=1024, line_width=5):
+    draw = ImageDraw.Draw(img)
+    width = custom_width
+    height = custom_height
+    
+    for (from_index, to_index) in associations:
+        from_x, from_y = points[from_index]
+        from_x = float(from_x)
+        from_y = float(from_y)
+        to_x, to_y = points[to_index]
+        to_x = float(to_x)
+        to_y = float(to_y)
+        
+        from_x *= width
+        from_y *= height
+        
+        to_x *= width
+        to_y *= height
+        
+        draw.line([(from_x, from_y), (to_x, to_y)], fill=colors[to_index], width=line_width)
+    
+    return img
