@@ -31,5 +31,5 @@ This is a step by step description for how to use the Markerless framework:
 4. Create a new project folder under "projects" with a specified name (e.g. "mpii2015") 
 5. Create two subfolders within your project folder with name "data" and a "raw" and "processed" sub-folders (e.g. "mpii2015/data/raw" and "mpii2015/data/processed")
 6. Upload your annotated images in a image folder named "??" within the "raw" folder (e.g. "mpii2015/data/raw/images"). The prosedure will randomise the images into a        "train/val/test"-folder and preprocess the images by resample them with zero-padding to images with 1024x1024 resolution (or resolution in line ??)
-7. If you have preprocessed and sorted the images, they can be uploaded into e.g. "images_1024x1024" within a train/val/test folder (e.g. mpii2015/data/processed/train, mpii2015/data/processed/val, and mpii2015/data/processed/test)    
+7. If you have preprocessed and sorted the images, they can be uploaded into e.g. "images_1024x1024"-folder within a train/val/test folder (e.g. mpii2015/data/processed/train, mpii2015/data/processed/val, and mpii2015/data/processed/test). In addition, the annotations have to be uploaded as txt-files with identical file name as the images into a separate folder named "points".      
 ...
