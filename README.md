@@ -31,10 +31,11 @@ This is a step by step description for how to use the Markerless framework:
 4. Create a new project folder under *'projects'* with a specified name (e.g., *'mpii2015'*) 
 5. Create constants file (i.e., *'project_constants.py'*) within project folder to define keypoint setup etc.
 6. Create a subfolder within your project folder with name *'data'* and within *'data'* two subfolders *'raw'* and *'processed'* (e.g., *'mpii2015/data/raw'* and *'mpii2015/data/processed'*).
-7. Upload images and annotations
+7. Create a subfolder within your project folder with name *'experiments'*. Your result from training/evaluation will be stored in this folder 
+8. Upload images and annotations
 - Alternative a) If you have raw images not sorted into train, val, and test sets: Within the *'raw'* folder, upload your annotated images into an image folder named *'images'* (e.g., *'mpii2015/data/raw/images'*) and annotation file (i.e., *'annotations.csv'*) into *'annotations'* folder (e.g., *'mpii2015/data/raw/annotations'*). The procedure will randomize the images into *'train'*, *'val'*, and *'test'* folders and preprocess the images by resizing with zero-padding to images with height and width according to *MAXIMUM_RESOLUTION* (e.g., 1024x1024) in *'project_constants.py'*. 
 - Alternative b) If you have preprocessed and sorted the images into train, val, and test: Directly upload the images into processed image folders (e.g., *'mpii2015/data/processed/train/images_1024x1024'*). In addition, upload annotations as txt files with identical file name as the images into a separate folder named *'points'* (e.g., *'mpii2015/data/processed/train/points'*).      
-8. Set parameters of training and/or evaluation in main.py script
+9. Set parameters of training and/or evaluation in main.py script
 - Line 6:      Set name of your project folder
 - Line 16:     Set name of the experiment. Your model and output data will be stored inside a folder with the experiment name
 - Line 20-21:  Set True/False flag if you want to train (fine-tune) the networks and/or evaluate the network. Note that evaluate = True would refer to a existing                     experiment folder created when train = True 
@@ -44,3 +45,7 @@ This is a step by step description for how to use the Markerless framework:
 - Line 40-47:  If model_type = 'EfficientHourglass', set additional parameters
 - Line 57-59:  Set training batch size, start epoch, and numbers of epochs in your training procedure
 - Line 87-124: Training hyper-parameters, training schedule, data augmentation, etc can be set. However, the default parameters used are found to work very well for                  training of all convnets
+10.  Save main.py (with chosen parameter setting)
+11. Open new terminal window in jupyter lab
+12. Type "python main.py" in terminal window and run training/evaluation of chosen convnet
+13. Your result output will be stored in "experiments" folder
