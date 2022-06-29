@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import euclidean, cdist
 from tensorflow import keras
+import tensorflow as tf
 from keras.models import load_model
 import keras.losses
 from keras.preprocessing.image import load_img, img_to_array
@@ -240,6 +241,7 @@ class EvaluationModel():
             
         else:
             points = [self.predict_on_sample(conf, confidence_threshold=confidence_threshold, body_parts=body_parts, confidence=confidence) for conf in confs]
+            #points = self.spatial_softArgmax(features = confs, beta = 50)
             
         return np.asarray(points)
     
@@ -277,12 +279,43 @@ class EvaluationModel():
 
         for bp in body_parts:
             idx = body_parts.index(bp)
-            point = extract_point(confs[..., idx], threshold=confidence_threshold, confidence=confidence)
+            point = extract_point(confs[..., idx], threshold=confidence_threshold, idx = idx, confidence=confidence)
             points.append(point)
 
         return np.asarray(points)
+    
+    def spatial_softArgmax(self, features, beta = 1.0):
+        # Assume features is of size [N, H, W, C] (batch_size, height, width, channels).
+        # Transpose it to [N, C, H, W], then reshape to [N * C, H * W] to compute softmax
+        # jointly over the image dimensions.
+        #tf.compat.v1.disable_eager_execution()
+        shape = tf.shape(features)
+        N, H, W, C = shape[0], shape[1], shape[2], shape[3]
+        posx, posy = tf.meshgrid(tf.linspace(0., 1., num = H), 
+                                 tf.linspace(0., 1., num = W),
+                                             indexing='ij')
+        features = tf.reshape(tf.transpose(features, [0, 3, 1, 2]), [N * C, H * W])
+        softmax = tf.nn.softmax(beta*features)
+        # Reshape and transpose back to original format.
+        softmax = tf.transpose(tf.reshape(softmax, [N, C, H, W]), [0, 2, 3, 1])
+        # Assume that image_coords is a tensor of size [H, W, 2] representing the image
+        # coordinates of each pixel.
+        # Convert softmax to shape [N, H, W, C, 1]
+        softmax = tf.expand_dims(softmax, -1)
+        # Convert image coords to shape [H, W, 1, 2]
+        posx = tf.expand_dims(posx, -1)
+        posy= tf.expand_dims(posy, -1)
+        image_coords = tf.concat([posy, posx], 2)
+        image_coords = tf.expand_dims(image_coords, 2)
+        # Multiply (with broadcasting) and reduce over image dimensions to get the body keypoints
+        # of shape [N, C, 2]
+        spatial_soft_argmax = tf.math.reduce_sum(softmax * image_coords, axis=[1, 2])
+        #print(spatial_soft_argmax)
+        points = np.array(spatial_soft_argmax, dtype = 'float32')
+        
+        return points
 
-    def evaluate(self, val_datagen, head_segment, body_parts, output_layer_index, flipped_body_parts, batch_size, confidence_threshold, preprocess_input=None, n_samples=None, supply_ids=False, thresholds=[0.5], display_pred=False, display_gt=False, mpii=True, flip=False, smooth=False, smooth_stride=2, augmented_val_dir=None, augmented_preprocess_input=False, smooth_type='average', standard_deviation=False, shuffle=False, human_errors=None):
+    def evaluate(self, val_datagen, head_segment, body_parts, output_layer_index, flipped_body_parts, batch_size, confidence_threshold, preprocess_input=None, n_samples=None, supply_ids=False, thresholds=[0.5], display_pred=False, display_gt=False, mpii=True, flip=False, smooth=False, smooth_stride=2, augmented_val_dir=None, augmented_preprocess_input=False, smooth_type='average', standard_deviation=False, shuffle=False, human_errors=None, store_preds=False):
         
         accs = []
         
@@ -292,9 +325,13 @@ class EvaluationModel():
         errors = []
         
         datagen = val_datagen.get_eval_data(preprocess_input=preprocess_input, n_samples=n_samples, supply_ids=supply_ids, batch_size=batch_size, shuffle=shuffle)
+    
+        preds = {}
         if supply_ids:
             for ids_batch, img_batch, point_batch in datagen:
                     pred_point_batch = self.predict_on_batch(img_batch, ids_batch=ids_batch, body_parts=body_parts, output_index=output_layer_index, flip=flip, flipped_body_parts=flipped_body_parts, smooth=smooth, smooth_stride=smooth_stride, augmented_val_dir=augmented_val_dir, augmented_preprocess_input=augmented_preprocess_input, smooth_type=smooth_type, confidence_threshold=confidence_threshold)
+                    for n in range(pred_point_batch.shape[0]):
+                        preds[ids_batch[n]] = pred_point_batch[n]
 
                     for threshold in thresholds:
                         acc, acc_pr_point = evaluate_all(point_batch, pred_point_batch, head_segment, threshold=threshold, mpii=mpii)
@@ -329,9 +366,13 @@ class EvaluationModel():
                         plt.imshow(img1)
                         plt.show()
         else:
+            count = 1
             for img_batch, point_batch in datagen:
                 pred_point_batch = self.predict_on_batch(img_batch, body_parts=body_parts, output_index=output_layer_index, flip=flip, flipped_body_parts=flipped_body_parts, confidence_threshold=confidence_threshold)
-
+                for n in range(pred_point_batch.shape[0]):
+                    preds[count] = pred_point_batch[n]
+                    count += 1
+                
                 for threshold in thresholds:
                     acc, acc_pr_point = evaluate_all(point_batch, pred_point_batch, head_segment, threshold=threshold, mpii=mpii)
                     accuracies[threshold].append(acc_pr_point)
@@ -411,4 +452,7 @@ class EvaluationModel():
         else:
             results['error'] = res
         
-        return results
+        if store_preds:
+            return results, preds
+        else:
+            return results

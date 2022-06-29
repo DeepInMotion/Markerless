@@ -116,6 +116,10 @@ class DataGenerator:
             return {
                     'stage1_confs_tune': conf
                     }
+        elif model_type.upper() == 'EH-1': # EfficientHourglass: Training with 1 pass
+            return {
+                    'stage1_confs': conf
+                    }
         elif model_type.upper() == 'EP-1+2-PAFS-TUNE': # EfficientPose with 1PAFs+2 passes
             return {
                     'pass1_skeleton_pafs_tune': paf,

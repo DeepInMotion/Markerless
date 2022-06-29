@@ -106,18 +106,26 @@ class architecture:
             
             # Bridge MBconv blocks
             if(block < block_bridge):
-                Bridge = self.MBconv(feature_maps=Block, filters=map_numb_block[block], name = 'Bridge1' + '_Res{}'.format(block+1), factor = MBconv_factor[block], se_ratio = SE_ratio[block], trainable = trainable, bridge_num = block, TF = self.TF)
+                Bridge = self.MBconv(feature_maps=Block, filters=map_numb_block[block], name = 'Bridge1' + '_Res{}'.format(block+1), factor = MBconv_factor[block], se_ratio = SE_ratio[block], kernel_initializer = CONV_KERNEL_INITIALIZER1, bridge_num = block, TF = self.TF)
                 Bridge_block.append(Bridge)
         
         # Transpose upscaling
         for upsamp in range(1, block_num):
-            Block = self.Transpose_concat_squeeze(feature_maps1 = Block, feature_maps2 = Bridge_block[block_num-upsamp-1], filters = map_numb_block[block_num-upsamp-1], se_ratio = SE_ratio[block_num-upsamp-1], trainable = trainable, transpose_num = upsamp, BN_num = 3*block_bridge+upsamp, conv_num = block_bridge+upsamp-1, TF = self.TF)
+            kernel_initializer = {
+                    'class_name': 'VarianceScaling',
+                    'config': {
+                        'scale': 1./(upsamp+1),
+                        'mode': 'fan_in',
+                        'distribution': 'normal'
+                }
+            }
+            Block = self.Transpose_concat_squeeze(feature_maps1 = Block, feature_maps2 = Bridge_block[block_num-upsamp-1], filters = map_numb_block[block_num-upsamp-1], se_ratio = SE_ratio[block_num-upsamp-1], kernel_initializer = kernel_initializer, transpose_num = upsamp, BN_num = 3*block_bridge+upsamp, conv_num = block_bridge+upsamp-1, TF = self.TF)
         
         # Output and upscale stage for test
         if not self.upscale:
-            Conf_maps = Conv2D(num_body_parts, 1, name='stage1_confs_tune', padding='same', kernel_initializer = CONV_KERNEL_INITIALIZER1)(Block)
+            Conf_maps = Conv2D(num_body_parts, 1, name='stage1_confs', padding='same', kernel_initializer = CONV_KERNEL_INITIALIZER1)(Block)
         else:
-            output_block = Conv2D(num_body_parts, 1, name='stage1_confs_tune', padding='same')(Block)
+            output_block = Conv2D(num_body_parts, 1, name='stage1_confs', padding='same')(Block)
             deconvX = self.upscale_block(detection_layer=output_block, num_body_parts=num_body_parts)
             Conf_maps = deconvX
         self.model_outputs.append(Conf_maps) 
@@ -125,7 +133,7 @@ class architecture:
         # Build CIMA-Pose model
         self.model = Model(input_layer, self.model_outputs, name='EfficientHourglass')
 
-    def Transpose_concat_squeeze(self, feature_maps1, feature_maps2, filters, se_ratio, trainable, transpose_num, BN_num, conv_num, TF):
+    def Transpose_concat_squeeze(self, feature_maps1, feature_maps2, filters, se_ratio, kernel_initializer, transpose_num, BN_num, conv_num, TF):
         # Adjust layer name differences between TF1 and TF2 pretrained weights
         if(TF == '_TF2'): 
             BN_num = BN_num-1 
@@ -138,7 +146,7 @@ class architecture:
             name_add = 'add_{}'.format(transpose_num)
         
         # Transpose and SE-block
-        Upsamp_BN = Conv2DTranspose(filters, kernel_size = (4, 4), strides = (2, 2), name = name_transpose, padding='same', trainable = trainable)(feature_maps1)
+        Upsamp_BN = Conv2DTranspose(filters, kernel_size = (4, 4), strides = (2, 2), name = name_transpose, padding='same', kernel_initializer = kernel_initializer)(feature_maps1)
         Upsamp_BN = BatchNormalization(name = 'batch_normalization_{}'.format(BN_num))(Upsamp_BN)
         if(self.model_type == 'L'):
             Upsamp_BN = ReLU(max_value = 6)(Upsamp_BN)
@@ -146,10 +154,10 @@ class architecture:
             Upsamp_BN = Swish('swish1')(Upsamp_BN)
         output_block = Add(name = name_add)([feature_maps2, Upsamp_BN])
         if not(self.model_type == 'L'):
-            output_block = self.SE_EfficientNet(input_x = output_block, input_filters = output_block.shape.as_list()[-1], se_ratio = se_ratio, trainable = trainable, bridge_num = conv_num, TF = TF)
+            output_block = self.SE_EfficientNet(input_x = output_block, input_filters = output_block.shape.as_list()[-1], se_ratio = se_ratio, kernel_initializer = kernel_initializer, bridge_num = conv_num, TF = TF)
         return output_block
         
-    def MBconv(self, feature_maps, filters, name, factor, se_ratio, trainable, bridge_num, TF):
+    def MBconv(self, feature_maps, filters, name, factor, se_ratio, kernel_initializer, bridge_num, TF):
         # Adjust layer name differences between TF1 and TF2 pretrained weights
         if(TF == '_TF2'): BN_num = 3*bridge_num
         else: BN_num = 3*bridge_num+1
@@ -162,7 +170,7 @@ class architecture:
         if(factor==1):
             ConvBN1 = feature_maps
         else:
-            ConvBN1 = Conv2D(factor*filters, (1, 1), name = name + '_BN1', padding='same', trainable = trainable)(feature_maps)
+            ConvBN1 = Conv2D(factor*filters, (1, 1), name = name + '_BN1', padding='same', kernel_initializer = kernel_initializer)(feature_maps)
             ConvBN1 = BatchNormalization(name = name_BN1)(ConvBN1)
             if(self.model_type == 'L' or self.model_type == 'H'):
                 ConvBN1 = ReLU(max_value = 6)(ConvBN1)
@@ -170,17 +178,17 @@ class architecture:
                 ConvBN1 = Swish('swish1')(ConvBN1)
         
         # Depthwise convolutions
-        dConv = DepthwiseConv2D(kernel_size = (5, 5), name = name + '_dConv', padding='same', trainable = trainable)(ConvBN1)
+        dConv = DepthwiseConv2D(kernel_size = (5, 5), name = name + '_dConv', padding='same', kernel_initializer = kernel_initializer)(ConvBN1)
         dConv = BatchNormalization(name = name_BN2)(dConv)
         if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(dConv)
         else:
             output = Swish('swish1')(dConv)
             input_filters = output.shape.as_list()[-1]
-            output = self.SE_EfficientNet(input_x = output, input_filters = input_filters, se_ratio = se_ratio, trainable = trainable, bridge_num = bridge_num, TF = TF)
+            output = self.SE_EfficientNet(input_x = output, input_filters = input_filters, se_ratio = se_ratio, kernel_initializer = kernel_initializer, bridge_num = bridge_num, TF = TF)
         
         # Bottelneck
-        output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', trainable = trainable)(output)
+        output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', kernel_initializer = kernel_initializer)(output)
         output = BatchNormalization(name = name_BN3)(output)
         if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(output)
@@ -189,7 +197,7 @@ class architecture:
         return output 
     
     
-    def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable, bridge_num, TF):
+    def SE_EfficientNet(self, input_x, input_filters, se_ratio, kernel_initializer, bridge_num, TF):
         # Adjust layer name differences between TF1 and TF2 pretrained weights
         if(TF == '_TF2'): SE_num = 2*bridge_num
         else: SE_num = 2*bridge_num+1
@@ -216,9 +224,9 @@ class architecture:
                 num_reduced_filters,
                 kernel_size=[1, 1],
                 strides=[1, 1],
-                trainable = trainable,
+                #trainable = trainable,
                 name = name_SE1,
-                #kernel_initializer = kernel_initializer,
+                kernel_initializer = kernel_initializer,
                 padding='same',
                 use_bias=True
             )(x)
@@ -229,9 +237,9 @@ class architecture:
                 input_filters,
                 kernel_size=[1, 1],
                 strides=[1, 1],
-                trainable = trainable,
+                #trainable = trainable,
                 name = name_SE2,
-                #kernel_initializer = kernel_initializer,
+                kernel_initializer = kernel_initializer,
                 padding='same',
                 use_bias=True
             )(x)
@@ -241,7 +249,8 @@ class architecture:
         return output_x  
         
     def upscale_block(self, detection_layer):
-        # Perform transpose upscaling
+         
+        # Perform upscaling
         scale_factor = (self.output_size[0] / self.input_resolution) * self.scale_factor
         num_deconvs = int(math.log(scale_factor, 2))
         deconvX = detection_layer
@@ -250,7 +259,7 @@ class architecture:
                 deconvX = Conv2DTranspose(self.num_body_parts, 4, strides=(2, 2), name='upscaled_confs', padding='same', kernel_initializer=initializers.BilinearWeights())(deconvX)
             else:
                 deconvX = Conv2DTranspose(self.num_body_parts, 4, strides=(2, 2), name='upscaled_transpose{}'.format(i), padding='same', kernel_initializer=initializers.BilinearWeights())(deconvX)
-               
+
         return deconvX
     
 
