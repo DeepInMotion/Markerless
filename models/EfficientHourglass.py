@@ -182,13 +182,13 @@ class architecture:
         # Bottelneck
         output = Conv2D(filters, (1, 1), name = name + '_BN2', padding='same', trainable = trainable)(output)
         output = BatchNormalization(name = name_BN3)(output)
+
         if(self.model_type == 'L'):
             output = ReLU(max_value = 6)(output)
         else:
             output = Swish('swish1')(output)
         return output 
-    
-    
+        
     def SE_EfficientNet(self, input_x, input_filters, se_ratio, trainable, bridge_num, TF):
         # Adjust layer name differences between TF1 and TF2 pretrained weights
         if(TF == '_TF2'): SE_num = 2*bridge_num

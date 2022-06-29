@@ -12,31 +12,7 @@ import math
 random.seed(42)
 
 def confidence(p1_x, p1_y, p0_x, p0_y, sigma):
-    """ Calculate confidence value at point p1, relative to the ground truth point p0. 
-    Corresponds to S_j,k in the CMU-pose paper.
-    
-    Parameters
-    ----------
-    p0_abs: (int, int)
-        Grount truth point with (x, y) absolute coordinates
-    p1_abs: (int, int)
-        A point with (x,y) absolute coordinates where confidence is measured
-    sigma: float
-        Standard diviation controlling the spread of confidence around the ground truth point.
-        Check: https://github.com/michalfaber/keras_Realtime_Multi-Person_Pose_Estimation/issues/8
-        
-    Returns
-    ----------
-    confidence: float
-        A value between 0 and 1 representing the confidence at point p1
-    """
-    
-    p0_abs = np.asarray([p0_x, p0_y])
-    p1_abs = np.asarray([p1_x, p1_y])
-    l2_norm = np.square(np.linalg.norm(np.subtract(p1_abs, p0_abs), ord=2))
-    confidence = np.exp(- np.divide(l2_norm, np.square(sigma)))
-    
-    return confidence
+    return math.exp(-(linalg.norm(np.asarray([p1_x,p1_y])-np.asarray([p0_x,p0_y]), ord=2)**2)/(sigma**2))
 
 def make_conf_map(p0_x, p0_y, height, width, sigma):
     if p0_x == 0 and p0_y == 0:
