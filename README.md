@@ -36,18 +36,19 @@ This is a step by step description for how to use the Markerless framework:
 - Alternative a) If you have raw images not sorted into train, val, and test sets: Within the *'raw'* folder, upload your annotated images into an image folder named *'images'* (e.g., *'mpii2015/data/raw/images'*) and annotation file (i.e., *'annotations.csv'*) into *'annotations'* folder (e.g., *'mpii2015/data/raw/annotations'*). The procedure will randomize the images into *'train'*, *'val'*, and *'test'* folders and preprocess the images by resizing with zero-padding to images with height and width according to `MAXIMUM_RESOLUTION` (e.g., 1024x1024) in *'project_constants.py'*. 
 - Alternative b) If you have preprocessed and sorted the images into train, val, and test: Directly upload the images into processed image folders (e.g., *'mpii2015/data/processed/train/images_1024x1024'*). In addition, upload annotations as txt files with identical file name as the images into a separate folder named *'points'* (e.g., *'mpii2015/data/processed/train/points'*).      
 9. Set parameters of training and/or evaluation in *'main.py'*:
-- Line 6: Set name of your project folder.
-- Line 16: Set name of the experiment. Your model and output data will be stored inside a folder with the given experiment name within the *'experiments'* subfolder.
-- Line 19: Set `train = True` if you want to train (finetune) the ConvNet, otherwise set `train = False` to skip training. 
-- Line 20: Set `evaluate = True` if you want to evaluate the ConvNet, otherwise use `evaluate = False`. The evaluation will be performed on the model placed in the folder given by the experiment name. 
-- Line 23: Set `Dual_GPU = True` for dual GPU use, otherwise `Dual_GPU = False` for single GPU.
-- Line 35: Set input resolution of images (e.g., `input_resolution = 256`).
-- Line 39: Set ConvNet type, either EfficientHourglass, EfficientPose, EfficientPose Lite, or CIMA-Pose (e.g., `model_type = 'EfficientHourglass'`).
-- Line 40-47: If `model_type = 'EfficientHourglass'`, set additional parameters.
-- Line 57-59: Set training batch size (e.g., `training_batch_size = 16 `), start epoch of training (e.g., `start_epoch = 0`), and numbers of epochs in a training run (e.g., `num_epochs = 50`).
-- Line 88-118: Hyperparameters for training optimization, data augmentation etc. can be set. However, the default parameters are found to work very well for                  training of all the included ConvNets.
-- Line 121-124: Set preferences for the evaluation process, including batch size (e.g., `evaluation_batch_size = 49`), PCK<sub>h</sub> thresholds to evaluate (e.g., `pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05]`), confidence threshold for a prediction to be performed (e.g., `confidence_threshold = 0.0001`), and flip evaluation (i.e., `flip = True` for combining predictions of original and flipped images, otherwise `flip = False`).
+- Line 8: Set name of your project folder.
+- Line 19: Set name of the experiment. Your model and output data will be stored inside a folder with the given experiment name within the *'experiments'* subfolder.
+- Line 22: Set `train = True` if you want to train the ConvNet, otherwise set `train = False` to skip training. 
+- Line 23: If `train = True`, set `fine_tune = True` if you want to fine-tune the ConvNet, otherwise use `fine_tune = False` to perform training from scratch. 
+- Line 24: Set `evaluate = True` if you want to evaluate the ConvNet, otherwise use `evaluate = False`. The evaluation will be performed on the model placed in the folder given by the experiment name. 
+- Line 28: Set `Dual_GPU = True` for dual GPU use, otherwise `Dual_GPU = False` for single GPU.
+- Line 40: Set ConvNet type, either EfficientHourglass, EfficientPose, EfficientPose Lite, or CIMA-Pose (e.g., `model_type = 'EfficientHourglass'`).
+- Line 41: Set input resolution of images (e.g., `input_resolution = 256`).
+- Line 43-46: If `model_type = 'EfficientHourglass'`, set additional parameters.
+- Line 56-58: Set training batch size (e.g., `training_batch_size = 16 `), start epoch of training (e.g., `start_epoch = 0`), and numbers of epochs in a training run (e.g., `num_epochs = 50`).
+- Line 61-70: Hyperparameters for training optimization, data augmentation etc. can be set. However, the default parameters are found to work very well for                  training of all the included ConvNets.
+- Line 73-76: Set preferences for the evaluation process, including batch size (e.g., `evaluation_batch_size = 49`), PCK<sub>h</sub> thresholds to evaluate (e.g., `pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05]`), confidence threshold for a prediction to be performed (e.g., `confidence_threshold = 0.0001`), and flip evaluation (i.e., `flip = True` for combining predictions of original and flipped images, otherwise `flip = False`).
 10. Save *'main.py'* (with the chosen hyperparameter setting).
 11. Open a new terminal window from the jupyter lab tab in the web browser.
 12. Run training and/or evaluation of the chosen ConvNet in the terminal window: **python main.py**
-13. The results of the training and evaluation processes will be stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/03032021 1709 MPII_128x128_EfficientHourglassB0_Block1to6_weights'*).
+13. The results of the training and evaluation processes will be stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_256x256_EfficientHourglassB0_Block1to6_weights'*).
