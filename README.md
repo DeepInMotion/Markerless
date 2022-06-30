@@ -52,3 +52,5 @@ This is a step by step description for how to use the Markerless framework:
 11. Open a new terminal window from the jupyter lab tab in the web browser.
 12. Run training and/or evaluation of the chosen ConvNet in the terminal window: **python main.py**
 13. The results of the training and evaluation processes will be stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights'*).
+
+**Tip: The batch script (i.e., *'main_batch.py'*) may be used for sequential training of the same ConvNet with different input resolutions to determine the optimal model complexity.**
