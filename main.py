@@ -16,7 +16,7 @@ sys.path.append(project_dir)
 
 #### Step 2: Enter the name of your experiment. Start with the date and time and continue with the name of the pretrained weight file (see options in pretrained folder)
 # NOTE: Remember to give your experiment a unique name that are not contained in your 'experiments' subfolder
-experiment_name = '30062022 1022 MPII2015_256x256_EfficientHourglassB0_Block1to6_weights' # <---Enter the name of your experiment
+experiment_name = '30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights' # <---Enter the name of your experiment
 
 #### Step 3: Decide if you want to train or evaluate your model. The training procedure 'train' develop your model for multiple iterations (i.e. epochs) on the training images (see projects --> project_name (line 7) --> data --> processed -->  train) and evaluate the data on validation set (see projects --> project_name (line 7) --> data --> processed -->  val). The evaluation procedure 'evaluate' use the best performing model on the validation set to evaluate the model on the test set (see projects --> project_name (line 7) --> data --> processed -->  test)   
 train = True # <-- Assign [True, False] 
@@ -38,7 +38,7 @@ else:
 
 #### Step 5: Choose model type and configuration. When using EfficientHourglass model, be aware of the comments and notes below. 
 model_type = 'EfficientHourglass' # <--assign model type ['EfficientHourglass', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose']
-input_resolution = 256 # <-- assign resolution [Options for EfficientHourglass --> 128,160,192,224,256,288,320,356,384,(416),(448),(480),512, Options for EfficientPose --> 128,224,256,368,480,600, Options for EfficientPose Lite --> 128,224,256,368, Options for EfficientPose Lite --> 368]
+input_resolution = 224 # <-- assign resolution [Options for EfficientHourglass --> 128,160,192,224,256,288,320,356,384,(416),(448),(480),512, Options for EfficientPose --> 128,224,256,368,480,600, Options for EfficientPose Lite --> 128,224,256,368, Options for EfficientPose Lite --> 368]
 if model_type == 'EfficientHourglass':
     architecture_type = 'B' #<--assign architecture type for EfficientHourglass ['L'= EfficientHourglass_lite, 'B'= EfficientHourglass_original, 'H' = EfficientHourglass_lite_original_hybrid, 'X' = EfficientHourglass-X] Default is B
     efficientnet_variant = 0 #<--assign EfficientNet-backbone variant [Options --> 0, 1, 2, 3, 4] Default: 0
