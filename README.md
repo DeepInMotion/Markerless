@@ -43,7 +43,7 @@ This is a step by step description for how to use the Markerless framework:
 - Line 24: Set `evaluate = True` if you want to evaluate the ConvNet, otherwise use `evaluate = False`. The evaluation will be performed on the model placed in the folder given by the experiment name. 
 - Line 28: Set `Dual_GPU = True` for dual GPU use, otherwise `Dual_GPU = False` for single GPU.
 - Line 40: Set ConvNet type, either EfficientHourglass, EfficientPose, EfficientPose Lite, or CIMA-Pose (e.g., `model_type = 'EfficientHourglass'`).
-- Line 41: Set input resolution of images (e.g., `input_resolution = 256`).
+- Line 41: Set input resolution of images (e.g., `input_resolution = 224`).
 - Line 43-46: If `model_type = 'EfficientHourglass'`, set additional parameters.
 - Line 56-58: Set training batch size (e.g., `training_batch_size = 16 `), start epoch of training (e.g., `start_epoch = 0`), and numbers of epochs in a training run (e.g., `num_epochs = 50`).
 - Line 61-70: Hyperparameters for training optimization, data augmentation etc. can be set. However, the default parameters are found to work very well for                  training of all the included ConvNets.
@@ -51,4 +51,4 @@ This is a step by step description for how to use the Markerless framework:
 10. Save *'main.py'* (with the chosen hyperparameter setting).
 11. Open a new terminal window from the jupyter lab tab in the web browser.
 12. Run training and/or evaluation of the chosen ConvNet in the terminal window: **python main.py**
-13. The results of the training and evaluation processes will be stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_256x256_EfficientHourglassB0_Block1to6_weights'*).
+13. The results of the training and evaluation processes will be stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights'*).
