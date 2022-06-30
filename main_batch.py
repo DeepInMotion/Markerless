@@ -5,7 +5,7 @@ import os, sys
 
 #### Step 1: Create a new folder under 'projects' and enter the name of the folder below. Create a 'data' and 'experiments' subfolder. 
 # NOTE: You do not have to create a new project for each experiment. Your experiments subfolder will contain all your experiments  
-project_name = 'skijump2021' # <---Enter the name of your project folder
+project_name = 'mpii2015' # <---Enter the name of your project folder
 
 project_dir = os.path.join('projects', project_name)
 sys.path.append(project_dir)
@@ -19,12 +19,11 @@ sys.path.append(project_dir)
 
 #### Step 3: Decide if you want to train or evaluate your model. The training procedure 'train' develop your model for multiple iterations (i.e. epochs) on the training images (see projects --> project_name (line 7) --> data --> processed -->  train) and evaluate the data on validation set (see projects --> project_name (line 7) --> data --> processed -->  val). The evaluation procedure 'evaluate' use the best performing model on the validation set to evaluate the model on the test set (see projects --> project_name (line 7) --> data --> processed -->  test)   
 train = True # <-- Assign [True, False] 
-evaluate = True # <-- Assign  [True, False] 
 fine_tune = True # <-- Assign  [True, False] NB: 'False' works for EfficientHourglass only
-#evaluate_wo_labels = True # <-- Assign  [True, False] 
+evaluate = True # <-- Assign  [True, False] 
 
 #### Step 4: Choose usage of single or dual GPU 
-dual_gpu = False #True
+dual_gpu = False # <-- Assign  [True, False]
 if dual_gpu:
     # Assign GPU
     gpus = "0,1"
@@ -37,10 +36,9 @@ else:
     gpu_memory_fraction = 0.8
 
 #### Step 5: Choose model type and configuration. When using EfficientHourglass model, be aware of the comments and notes below. 
-# Assign resolution [Options for EfficientHourglass --> 128,160,192,224,256,288,320,352,384,(416),(448),(480),512]
-input_resolution_batch = [128, 160, 192, 224, 256, 288, 320, 352, 384, 512] #Vector for input resolution for batch processing 
-
 model_type = 'EfficientHourglass' # <--assign model type ['EfficientHourglass', 'EfficientPose', 'EfficientPose Lite', 'CIMA-Pose']
+input_resolution_batch = [128, 160, 192, 224, 256, 288, 320, 352, 384, 512] # <-- assign resolutions in batch processing [Options for EfficientHourglass --> 128,160,192,224,256,288,320,356,384,(416),(448),(480),512, Options for EfficientPose --> 128,224,256,368,480,600, Options for EfficientPose Lite --> 128,224,256,368, Options for EfficientPose Lite --> 368]
+start_resolution_index = 0
 if model_type == 'EfficientHourglass':
     architecture_type = 'B' #<--assign architecture type for EfficientHourglass ['L'= EfficientHourglass_lite, 'B'= EfficientHourglass_original, 'H' = EfficientHourglass_lite_original_hybrid, 'X' = EfficientHourglass-X] Default is B
     efficientnet_variant = 0 #<--assign EfficientNet-backbone variant [Options --> 0, 1, 2, 3, 4] Default: 0
@@ -73,7 +71,7 @@ augmentation_flip = True
 
 #### Step 9: Set evaluation options when using the best performing model on the test data set
 evaluation_batch_size = 16
-pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05]
+pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05] # For approximation of official MPII evaluation: [2.25, 1.5, 0.75, .375, .225, .075, .0375]
 confidence_threshold = 0.0001
 flip = False
 
@@ -113,7 +111,7 @@ import project_constants as pc
 
 """ Batch processing start"""
 
-for batch in range(6,len(input_resolution_batch)):
+for batch in range(start_resolution_index,len(input_resolution_batch)):
     input_resolution = input_resolution_batch[batch]
     upscaled_output_resolution = input_resolution
 
@@ -190,7 +188,7 @@ for batch in range(6,len(input_resolution_batch)):
 
 
     """ START TRAINING AND EVALUATION SCRIPT (DO NOT CHANGE)"""
-    experiment_name = 'MPII_batch{}_{}x{}_EfficientHourglass{}{}_{}'.format('' + str(batch+1), str(input_resolution), str(input_resolution), architecture_type, str(efficientnet_variant), block_variant)
+    experiment_name = '{}_batch{}_{}x{}_EfficientHourglass{}{}_{}'.format(project_name, '' + str(batch+1), str(input_resolution), str(input_resolution), architecture_type, str(efficientnet_variant), block_variant)
     
     """ Initialize experiment directories """
     experiment_dir = os.path.join(project_dir, 'experiments', experiment_name)
