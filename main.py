@@ -53,7 +53,7 @@ if model_type == 'EfficientHourglass':
 # input_resolution = 224, architecture_type = 'B', efficientnet_ variant = 0, block_variant = 'Block1to6', TF_version = None
 
 #### Step 6: Set training hyperparameters: mini-batch size, start epoch, and number of epochs
-training_batch_size = 8 
+training_batch_size = 16 
 start_epoch = 0 
 num_epochs = 50 
 
@@ -70,7 +70,7 @@ augmentation_zoom = 0.05 #NB change from default 0.25!!!
 augmentation_flip = True
 
 #### Step 9: Set evaluation options when using the best performing model on the test data set
-evaluation_batch_size = 8
+evaluation_batch_size = 16
 pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05] # For approximation of official MPII evaluation: [2.25, 1.5, 0.75, .375, .225, .075, .0375]
 confidence_threshold = 0.0001
 flip = False
@@ -185,7 +185,6 @@ import tensorflow.keras as keras
 import pandas as pd
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.utils import multi_gpu_model
 from alt_model_checkpoint.tensorflow import AltModelCheckpoint
 import csv
 import json
@@ -301,9 +300,9 @@ else:
     preprocess_input = m.preprocess_input
     
 if dual_gpu:
-    with tf.device('/cpu:0'):
-        model0 = convnet.model
-    model = multi_gpu_model(model0, gpus=2)
+    mirrored_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0","/gpu:1"])
+    with mirrored_strategy.scope():
+        model = convnet.model
 else:
     model = convnet.model
 
@@ -389,12 +388,12 @@ if train:
 """ Evaluation """
 
 if evaluate:
-          
+
     # Load correct model with upscaling
     raw_output = model.layers[-1].output
     upscaled_output = summary.upscale_block(raw_output, num_body_parts=pc.NUM_BODY_PARTS, raw_output_resolution=raw_output_resolution, upscaled_output_resolution=upscaled_output_resolution)
     upscaled_model = keras.Model(model.inputs, upscaled_output)
-    
+
     # Load weights from epoch with smallest mean error
     best_epoch = None
     best_mean_error = 1.0
@@ -411,7 +410,7 @@ if evaluate:
             except:
                 continue
     upscaled_model.load_weights(os.path.join(weights_dir, 'weights.{0}.hdf5'.format(best_epoch)), by_name=True)
-    
+
     # Evaluate model precision
     upscaled_evaluation_model = evaluation.EvaluationModel(model=upscaled_model, input_resolution=input_resolution, raw_output_resolution=raw_output_resolution)
     test_results, test_preds = upscaled_evaluation_model.evaluate(test_datagenerator, preprocess_input=preprocess_input, thresholds=pckh_thresholds, mpii=False, flip=flip, head_segment=pc.HEAD_SEGMENT, body_parts=pc.BODY_PARTS, output_layer_index=evaluation_output_index, flipped_body_parts=pc.FLIPPED_BODY_PARTS, batch_size=evaluation_batch_size, confidence_threshold=confidence_threshold, supply_ids=True, store_preds=True)
@@ -424,32 +423,25 @@ if evaluate:
         test_results['num_ms'] = num_ms 
         test_results['fps'] = 1/(num_ms/1000) 
     test_results['devices'] = devices
-    if upscale:    
-        # Store test results as JSON file
-        with open(os.path.join(experiment_dir, 'test_results.json'), 'w') as json_file:  
-            json.dump(test_results, json_file)
 
-        # Store predicted keypoints as points files
-        os.makedirs(os.path.join(experiment_dir, 'test_points'), exist_ok=True)
-        for image_id in test_preds.keys():
-            np.savetxt(os.path.join(experiment_dir, 'test_points', image_id + '.txt'), test_preds[image_id], fmt='%.6f')
+    # Store test results as JSON file
+    with open(os.path.join(experiment_dir, 'test_results.json'), 'w') as json_file:  
+        json.dump(test_results, json_file)
 
-        # Store images with predictions
-        os.makedirs(os.path.join(experiment_dir, 'test_plots'), exist_ok=True)
-        for image_id in test_preds.keys():
-            image_preds = test_preds[image_id]
+    # Store predicted keypoints as points files
+    os.makedirs(os.path.join(experiment_dir, 'test_points'), exist_ok=True)
+    for image_id in test_preds.keys():
+        np.savetxt(os.path.join(experiment_dir, 'test_points', image_id + '.txt'), test_preds[image_id], fmt='%.6f')
+
+    # Store images with predictions
+    os.makedirs(os.path.join(experiment_dir, 'test_plots'), exist_ok=True)
+    for image_id in test_preds.keys():
+        image_preds = test_preds[image_id]
+        try:
             image = Image.open(os.path.join(pc.PROCESSED_TEST_DIR, 'images_{0}x{0}'.format(str(input_resolution)), image_id + '.jpg'))
-            draw = ImageDraw.Draw(image)
-            image = add_lines(image, image_preds, colors=pc.BODY_PART_COLORS, associations=pc.SEGMENT_INDICES, custom_height=input_resolution, custom_width=input_resolution, line_width=int(input_resolution/200))
-            image = add_points(image, image_preds, colors=pc.BODY_PART_COLORS, custom_height=input_resolution, custom_width=input_resolution, radius=int(input_resolution/100))
-            image.save(os.path.join(experiment_dir, 'test_plots', image_id + '.jpg'))
-    else:
-        with open(os.path.join(experiment_dir, 'test_results_org_output.json'), 'w') as json_file:  
-            json.dump(test_results, json_file)
-        
-        # Store predicted keypoints as points files
-        #os.makedirs(os.path.join(experiment_dir, 'test_points_org'), exist_ok=True)
-        #for image_id in test_preds.keys():
-        #    np.savetxt(os.path.join(experiment_dir, 'test_points_org', image_id + '.txt'), test_preds[image_id], fmt='%.6f')
-        
-        
+        except:
+            image = Image.open(os.path.join(pc.PROCESSED_TEST_DIR, 'images_{0}x{0}'.format(str(input_resolution)), image_id + '.png'))
+        draw = ImageDraw.Draw(image)
+        image = add_lines(image, image_preds, colors=pc.BODY_PART_COLORS, associations=pc.SEGMENT_INDICES, custom_height=input_resolution, custom_width=input_resolution, line_width=int(input_resolution/200))
+        image = add_points(image, image_preds, colors=pc.BODY_PART_COLORS, custom_height=input_resolution, custom_width=input_resolution, radius=int(input_resolution/100))
+        image.save(os.path.join(experiment_dir, 'test_plots', image_id + '.jpg'))

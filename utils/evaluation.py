@@ -3,15 +3,15 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import euclidean, cdist
 from tensorflow import keras
 import tensorflow as tf
-from keras.models import load_model
-import keras.losses
-from keras.preprocessing.image import load_img, img_to_array
+from tensorflow.keras.models import load_model
+import tensorflow.keras.losses
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from PIL import Image, ImageDraw
 
 from utils.helpers import extract_point, resize, show_confidence_maps
 from utils.losses import euclidean_loss
 
-keras.losses.euclidean_loss = euclidean_loss
+tensorflow.keras.losses.euclidean_loss = euclidean_loss
 
 def evaluate_one(gt, pred, head_segment_indices, threshold=0.5, min_head_segment=.001, max_head_segment=1.0, default_head_segment=.1, mpii=True, human_errors=None):
     """ Calculate PCKh evaluation given an annotation and a set of predicted points

@@ -4,6 +4,7 @@ from PIL import Image
 import csv
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from utils.helpers import pad, resize
 
@@ -11,7 +12,7 @@ def copy_images(image_names, from_dir, to_dir):
 
     # Copy images to new directory
     os.makedirs(to_dir, exist_ok=True)
-    for image_name in image_names:
+    for image_name in tqdm(image_names):
         image = Image.open(os.path.join(from_dir, image_name))
         image.save(os.path.join(to_dir, image_name))
 
@@ -40,8 +41,11 @@ def generate_datasets(raw_images_dir, trainval_test_split, train_val_split):
     validation_image_names = trainval_image_names[num_train_images:]
     
     # Generate raw image folders for datasets
+    print("-- Generate train data")
     copy_images(train_image_names, raw_images_dir, os.path.join(raw_images_dir, 'train'))
+    print("-- Generate val data")
     copy_images(validation_image_names, raw_images_dir, os.path.join(raw_images_dir, 'val'))
+    print("-- Generate test data")
     copy_images(test_image_names, raw_images_dir, os.path.join(raw_images_dir, 'test'))
     
 def perform_processing(project_constants):
@@ -85,7 +89,8 @@ def perform_processing(project_constants):
             os.makedirs(dataset_processed_labels_dir)
             
             # Process images and labels
-            for dataset_image_name in dataset_image_names:
+            print('-- Process {0} images and labels'.format(dataset))
+            for dataset_image_name in tqdm(dataset_image_names):
                 if dataset_image_name in raw_annotations.keys():
                     
                     # Fetch raw image
@@ -220,7 +225,7 @@ def perform_processing(project_constants):
                           
                     # Store processed image and labels
                     processed_image.save(os.path.join(dataset_processed_images_dir, dataset_image_name))
-                    np.savetxt(os.path.join(dataset_processed_labels_dir, dataset_image_name.split('.')[0] + '.txt'), processed_points, fmt='%.6f')
+                    np.savetxt(os.path.join(dataset_processed_labels_dir, dataset_image_name[:dataset_image_name.rfind('.')] + '.txt'), processed_points, fmt='%.6f')
                     
 def generate_resolution(resolution, project_constants):
     
@@ -235,14 +240,15 @@ def generate_resolution(resolution, project_constants):
         os.makedirs(resolution_processed_images_dir)
     
         # Resize images
-        for image_file in os.listdir(default_processed_images_dir):
+        print('-- Resize {0} images'.format(dataset))
+        for image_file in tqdm(os.listdir(default_processed_images_dir)):
             if image_file.endswith(".jpg") or image_file.endswith(".png"):
                 image = Image.open(os.path.join(default_processed_images_dir, image_file))
                 resized_image = Image.fromarray(np.uint8(resize(np.array(image), resolution, resolution) * 255))
                 resized_image.save(os.path.join(resolution_processed_images_dir, image_file))
                 
         # Generate dataframe
-        image_names = [(img_name.split('.')[0], img_name.split('.')[1]) for img_name in os.listdir(resolution_processed_images_dir) if img_name.endswith('.png') or img_name.endswith('.jpg')]
+        image_names = [(img_name[:img_name.rfind('.')], img_name[img_name.rfind('.')+1:]) for img_name in os.listdir(resolution_processed_images_dir) if img_name.endswith('.png') or img_name.endswith('.jpg')]
         image_ids = [img_id for img_id, img_type in image_names]
         image_paths = [os.path.join(resolution_processed_images_dir, img_id + '.' + img_type) for (img_id, img_type) in image_names]
         points_dir = os.path.join(dataset_processed_dir, 'points')
