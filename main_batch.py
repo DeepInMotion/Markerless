@@ -399,7 +399,10 @@ for batch in range(start_resolution_index,len(input_resolution_batch)):
         os.makedirs(os.path.join(experiment_dir, 'test_plots'), exist_ok=True)
         for image_id in test_preds.keys():
             image_preds = test_preds[image_id]
-            image = Image.open(os.path.join(pc.PROCESSED_TEST_DIR, 'images_{0}x{0}'.format(str(input_resolution)), image_id + '.jpg'))
+            try:
+                image = Image.open(os.path.join(pc.PROCESSED_TEST_DIR, 'images_{0}x{0}'.format(str(input_resolution)), image_id + '.jpg'))
+            except:
+                image = Image.open(os.path.join(pc.PROCESSED_TEST_DIR, 'images_{0}x{0}'.format(str(input_resolution)), image_id + '.png'))
             draw = ImageDraw.Draw(image)
             image = add_lines(image, image_preds, colors=pc.BODY_PART_COLORS, associations=pc.SEGMENT_INDICES, custom_height=input_resolution, custom_width=input_resolution, line_width=int(input_resolution/200))
             image = add_points(image, image_preds, colors=pc.BODY_PART_COLORS, custom_height=input_resolution, custom_width=input_resolution, radius=int(input_resolution/100))
