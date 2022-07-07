@@ -272,6 +272,7 @@ for batch in range(start_resolution_index,len(input_resolution_batch)):
             preprocess_input = m.preprocess_input
     else:
         convnet = m.architecture(input_resolution=input_resolution, num_body_parts=pc.NUM_BODY_PARTS, num_segments=pc.NUM_SEGMENTS)
+        convnet.model.save(os.path.join(experiment_dir, 'model.h5'))
         preprocess_input = m.preprocess_input
 
     if dual_gpu:
@@ -280,6 +281,8 @@ for batch in range(start_resolution_index,len(input_resolution_batch)):
             model = convnet.model
     else:
         model = convnet.model
+        
+    # Computational metrics
     num_parameters, num_flops, num_ms, devices = summary.summary(model, upscaled_output_resolution=upscaled_output_resolution)
 
 
@@ -351,7 +354,7 @@ for batch in range(start_resolution_index,len(input_resolution_batch)):
 
     if evaluate:
 
-        # Load correct model with upscaling
+        # Load correct model 
         raw_output = model.layers[-1].output
         upscaled_output = summary.upscale_block(raw_output, num_body_parts=pc.NUM_BODY_PARTS, raw_output_resolution=raw_output_resolution, upscaled_output_resolution=upscaled_output_resolution)
         upscaled_model = keras.Model(model.inputs, upscaled_output)
