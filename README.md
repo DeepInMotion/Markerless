@@ -24,7 +24,7 @@ To setup the Markerless framework, follow these instructions:
 
 ## How to use on a Windows machine
 
-This is a step by step description for how to use the Markerless framework:
+This is a step by step description for how to use the Markerless framework for training and evaluating ConvNets:
 1. Open a command prompt and activate the virtual environment: **activate markerless**
 2. Navigate to the Markerless folder: **cd Markerless**
 3. Open the code library in a web browser: **jupyter lab**
@@ -35,7 +35,7 @@ This is a step by step description for how to use the Markerless framework:
 8. Upload images and annotations:
 - Alternative a) If you have raw images not sorted into train, val, and test sets: Create a subfolder *'raw'* within *'data'*, and upload your annotated images into an image folder named *'images'* (e.g., *'mpii2015/data/raw/images'*) and annotation file (i.e., *'annotations.csv'*) into *'annotations'* folder (e.g., *'mpii2015/data/raw/annotations'*). The procedure will randomize the images into *'train'*, *'val'*, and *'test'* folders and preprocess the images by resizing with zero-padding to images with height and width according to `MAXIMUM_RESOLUTION` (e.g., 1024x1024) in *'project_constants.py'*. 
 - Alternative b) If you have preprocessed and sorted the images into train, val, and test: Create a subfolder *'processed'* within the *'data'* folder and directly upload the images into separate dataset image folders (e.g., *'mpii2015/data/processed/train/images_1024x1024'*). In addition, for each dataset upload annotations as txt files with identical file name as the images into a separate folder named *'points'* (e.g., *'mpii2015/data/processed/train/points'*).      
-9. Set parameters of training and/or evaluation in *'main.py'*:
+9. Set choices for training and/or evaluation in *'main.py'*:
 - Line 8: Set name of your project folder.
 - Line 19: Set name of the experiment. Your model and output data will be stored inside a folder with the given experiment name within the *'experiments'* subfolder.
 - Line 22: Set `train = True` if you want to train the ConvNet, otherwise set `train = False` to skip training. 
@@ -44,13 +44,27 @@ This is a step by step description for how to use the Markerless framework:
 - Line 28: Set `Dual_GPU = True` for dual GPU use, otherwise `Dual_GPU = False` for single GPU.
 - Line 40: Set ConvNet type, either EfficientHourglass, EfficientPose, EfficientPose Lite, or CIMA-Pose (e.g., `model_type = 'EfficientHourglass'`).
 - Line 41: Set input resolution of images (e.g., `input_resolution = 224`).
-- Line 43-46: If `model_type = 'EfficientHourglass'`, set additional parameters.
+- Line 43-46: If `model_type = 'EfficientHourglass'`, set additional hyperparameters.
 - Line 56-58: Set training batch size (e.g., `training_batch_size = 16 `), start epoch of training (e.g., `start_epoch = 0`), and numbers of epochs in a training run (e.g., `num_epochs = 50`).
-- Line 61-70: Hyperparameters for training optimization, data augmentation etc. can be set. However, the default parameters are found to work very well for                  training of all the included ConvNets.
+- Line 61-70: Hyperparameters for training optimization, data augmentation etc. can be set. However, the default values are found to work very well for training of all the included ConvNets.
 - Line 73-76: Set preferences for the evaluation process, including batch size (e.g., `evaluation_batch_size = 16`), PCK<sub>h</sub> thresholds to evaluate (e.g., `pckh_thresholds = [3.0, 2.0, 1.0, .5, .3, .1, .05]`), confidence threshold for a prediction to be performed (e.g., `confidence_threshold = 0.0001`), and flip evaluation (i.e., `flip = True` for combining predictions of original and flipped images, otherwise `flip = False`).
 10. Save *'main.py'* (with the chosen hyperparameter setting).
 11. Open a new terminal window from the jupyter lab tab in the web browser.
 12. Run training and/or evaluation of the chosen ConvNet in the terminal window: **python main.py**
-13. The results of the training and evaluation processes will be stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights'*).
+13. The results of the training and evaluation processes are stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights'*).
 
 **Tip: The batch script (i.e., *'main_batch.py'*) may be used for sequential training of the same ConvNet with different input resolutions to determine the optimal model complexity.**
+
+To employ a trained ConvNet for video-based motion tracking to extract coordinates of body keypoints we suggest the following steps:
+1. Decide whether a two stage tracker (i.e., *'track/tracker_twostage.py'*) with separate steps for person detection and pose estimation or one stage tracker (i.e., *'track/tracker_onestage.py'*) is appropriate. We recommend the use of one stage tracker only if the person of interest is covering most of the video image.
+2. Set experiment details in tracking script (e.g., *'track/tracker_twostage.py'*):
+- Line 19: Set name of your project folder (e.g., *'mpii2015'*).
+- Line 26: Set name of the experiment for training the ConvNet (e.g., *'30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights'*).
+- Line 36: Set ConvNet type, either EfficientHourglass, EfficientPose, EfficientPose Lite, or CIMA-Pose (e.g., `model_type = 'EfficientHourglass'`).
+- Line 37: Set input resolution of images (e.g., `input_resolution = 224`).
+- Line 39-42: If `model_type = 'EfficientHourglass'`, set additional hyperparameters.
+3. Create a folder with videos that should be tracked (e.g., *'videos'*).
+4. Run the tracking script on the videos in the created folder. E.g.: **python track/tracker_twostage.py videos**
+5. The results of the motion tracker are stored in a folder with the same name as the video folder in the specific experiment folder within *'experiments'* (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights/videos'*).
+- Coordinate files of each video are stored in a folder called *'coords'* (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights/videos/coords'*).
+- Annotated videos are stored in *'annotations'* (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights/videos/annotations'*).
