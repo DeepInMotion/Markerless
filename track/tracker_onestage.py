@@ -4,11 +4,7 @@ import sys
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# set path to ffmpeg directory
-#ffmpegPath = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'ffmpeg/bin')))
-#skvideo.setFFmpegPath(ffmpegPath)
 from tqdm import tqdm
-#import matplotlib.pyplot as plt
 
 from sys import platform
 windows = False
@@ -163,7 +159,7 @@ def track(video_dir, preprocessed_video_path):
         body_parts_hpe = pc.BODY_PARTS
         num_body_parts_hpe = len(body_parts_hpe)
         batch_size = 128 # Batch size for HPE
-        preprocess_batch_multi = 1# DO NOT CHANGE!!! 1#4 # multiplier of batch_size for preprocessing large batch for increase. Adapt to GPU to prevent OOM
+        preprocess_batch_multi = 1 # DO NOT CHANGE!!! # multiplier of batch_size for preprocessing large batch for increase. Adapt to GPU to prevent OOM
         num_rotation = 0 # number of 90 degrees clock-wise rotations. Options 0 = 0 deg, 1 = 90 deg, 2 = 180 deg, 3 = 270 deg 
 
         # Configurate GPU and TF sessions
@@ -177,15 +173,7 @@ def track(video_dir, preprocessed_video_path):
         # CONFIGURATE HUMAN POSE ESTIMATION
         hpe_input_height, hpe_input_width = input_resolution, input_resolution
         hpe_output_height, hpe_output_width = upscaled_output_resolution, upscaled_output_resolution
-        #hpe_input_layer = 'input_res1:0'
-        #hpe_output_layer = 'upscaled_confs/BiasAdd:0' 
-        #hpe_output_layer = 'stage1_confs_tune/BiasAdd:0'
-        #hpe_f = gfile.FastGFile(hpe_path, 'rb')
-        #hpe_graph_def = tf.compat.v1.GraphDef()
-        #hpe_graph_def.ParseFromString(hpe_f.read())
-        #hpe_f.close()
         K.set_learning_phase(0)
-        #hpe_f = load_model(hpe_path, custom_objects={'keras_BilinearWeights': keras_BilinearWeights, 'Swish': Swish, 'swish1': swish1, 'FixedDropout': FixedDropout})
         
         # Load video
         if not os.path.exists(preprocessed_video_path):
@@ -205,7 +193,6 @@ def track(video_dir, preprocessed_video_path):
                         num_video_frames += 1
                     except:
                         break   
-                #num_video_frames = int(video_metadata['@nb_frames'])
                 num_batches = int(np.ceil(num_video_frames / batch_size))
                 frame_height, frame_width = next(skvideo.io.vreader(preprocessed_video_path)).shape[:2]
             except:
@@ -221,11 +208,9 @@ def track(video_dir, preprocessed_video_path):
                 
         for m in range(meta_batch):
             
-            #Clear video_batch for new session
+            # Clear video_batch for new session
             video_batch = []
             video_batch2 = []
-            
-            #print('ITERATION NUMBER {0}'.format(m+1))
             batch_start = int(m*preprocess_batch_multi)
             batch_end = int((m+1)*preprocess_batch_multi)
                        
@@ -235,16 +220,7 @@ def track(video_dir, preprocessed_video_path):
                 else:
                     rest_frames = num_video_frames - (batch_start*batch_size)
                     batch = [next(videogen) for _ in range(rest_frames)]
-                #if not type(batch[0]) == np.ndarray:
-                #    break
-                #elif not type(batch[-1]) == np.ndarray:
-                #    frame_shape = batch[0].shape
-                #    temp_batch = []
-                #    for frame in batch:
-                #        if type(frame) == np.ndarray:
-                #            temp_batch.append(frame)
-                #    batch = temp_batch
-	 		
+
                 video_batch += list(batch)
             video_batch = np.array(video_batch, dtype = 'uint8')
             
@@ -299,20 +275,24 @@ def track(video_dir, preprocessed_video_path):
                         peak_x = max_index % output_width
                         sigma = bdp_factor*(output_width/32) 
 
-                        #Local soft-argmax
+                        # Local soft-argmax
+                        
                         # Define beta and size of local square neighborhood
                         num_pix = int(np.round(2*sigma))
                         num_pix1 = int(num_pix+1)
+                        
                         # Define start and end indx for local square neighborhood
                         rows_start = int(np.max([int(peak_y)-num_pix, 0]))
                         rows_end = int(np.min([int(peak_y)+num_pix1, output_height]))
                         cols_start = int(np.max([int(peak_x)-num_pix, 0]))
                         cols_end = int(np.min([int(peak_x)+num_pix1, output_width]))
+                        
                         # Define localsquare neigborhod 
                         loc_mat = conf[rows_start:rows_end,cols_start:cols_end]
                         y_ind = [i for i in range(rows_start,rows_end)]
                         x_ind = [j for j in range(cols_start,cols_end)]
                         posy, posx = np.meshgrid(y_ind, x_ind, indexing='ij')
+                        
                         # Compute local soft-argmax for neigborhood
                         a = np.exp(beta*loc_mat)
                         b = np.sum(a)
@@ -344,7 +324,7 @@ def track(video_dir, preprocessed_video_path):
             
             metabatch_info.append((num_images, min_shape, max_shape, org_height, org_width, min_arg))
 
-        #Convert to original video coordinates
+        # Convert to original video coordinates
         coords=np.array(coords)
         org_coords=np.array(coords)
         coords_shape = np.shape(org_coords)
@@ -423,7 +403,7 @@ def track(video_dir, preprocessed_video_path):
             org_coords.append(frame_coords)
         org_coords = np.asarray(org_coords)
         
-    # Objective 2c: Visualize predictions
+    # Visualize predictions
     if visualize:
     
         # Fetch video information
@@ -465,20 +445,12 @@ def track(video_dir, preprocessed_video_path):
                 draw.text((0.01*frame_width, 0.95*frame_height),"{0}".format(i+1),(255,255,255),font=font)
                 writer.writeFrame(np.array(img))
 
-                #if i % 500 == 0:
-                #    plt.figure()
-                #    plt.imshow(img)
-                #    plt.show()
                 i += 1
             except:
                 break
 
-            #if i % 500 == 0:
-            #   print(f'{i}')
-
         writer.close()
         
-    #return coords, org_coords, video_batch, video_batch_crop, num_video_frames, meta_batch, preprocess_batch_multi, batch_size
     return org_coords
         
 if __name__ == '__main__':

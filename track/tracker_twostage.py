@@ -4,11 +4,7 @@ import sys
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# set path to ffmpeg directory
-#ffmpegPath = os.path.normpath(os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'ffmpeg/bin')))
-#skvideo.setFFmpegPath(ffmpegPath)
 from tqdm import tqdm
-#import matplotlib.pyplot as plt
 
 from sys import platform
 windows = False
@@ -166,7 +162,7 @@ def track(video_dir, preprocessed_video_path):
         body_parts_hpe = pc.BODY_PARTS
         num_body_parts_hpe = len(body_parts_hpe)
         batch_size = 128 # Batch size for human detection and HPE
-        preprocess_batch_multi = 1# DO NOT CHANGE!!! 1#4 # multiplier of batch_size for preprocessing large batch for increase. Adapt to GPU to prevent OOM
+        preprocess_batch_multi = 1 # DO NOT CHANGE!!! # multiplier of batch_size for preprocessing large batch for increase. Adapt to GPU to prevent OOM
         num_rotation = 0 # number of 90 degrees clock-wise rotations. Options 0 = 0 deg, 1 = 90 deg, 2 = 180 deg, 3 = 270 deg 
         roi_pad = 0.3
 
@@ -181,25 +177,11 @@ def track(video_dir, preprocessed_video_path):
         # CONFIGURATE HUMAN DETECTION
         det_input_height, det_input_width = input_resolution, input_resolution
         det_output_height, det_output_width = upscaled_output_resolution, upscaled_output_resolution 
-        #det_input_layer = 'input_1_0:0'
-        #det_output_layer = 'upscaled_confs/BiasAdd:0' 
-        #det_f = gfile.FastGFile(det_path, 'rb')
-        #det_graph_def = tf.compat.v1.GraphDef()
-        #det_graph_def.ParseFromString(det_f.read())
-        #det_f.close()
         
         # CONFIGURATE HUMAN POSE ESTIMATION
         hpe_input_height, hpe_input_width = input_resolution, input_resolution
         hpe_output_height, hpe_output_width = upscaled_output_resolution, upscaled_output_resolution
-        #hpe_input_layer = 'input_res1:0'
-        #hpe_output_layer = 'upscaled_confs/BiasAdd:0' 
-        #hpe_output_layer = 'stage1_confs_tune/BiasAdd:0'
-        #hpe_f = gfile.FastGFile(hpe_path, 'rb')
-        #hpe_graph_def = tf.compat.v1.GraphDef()
-        #hpe_graph_def.ParseFromString(hpe_f.read())
-        #hpe_f.close()
         K.set_learning_phase(0)
-        #hpe_f = load_model(hpe_path, custom_objects={'keras_BilinearWeights': keras_BilinearWeights, 'Swish': Swish, 'swish1': swish1, 'FixedDropout': FixedDropout})
         
         # Load video for detection
         if not os.path.exists(preprocessed_video_path):
@@ -219,7 +201,6 @@ def track(video_dir, preprocessed_video_path):
                         num_video_frames += 1
                     except:
                         break   
-                #num_video_frames = int(video_metadata['@nb_frames'])
                 num_batches = int(np.ceil(num_video_frames / batch_size))
                 frame_height, frame_width = next(skvideo.io.vreader(preprocessed_video_path)).shape[:2]
             except:
@@ -248,12 +229,11 @@ def track(video_dir, preprocessed_video_path):
         
         for m in range(meta_batch):
             
-            #Clear video_batch for new session
+            # Clear video_batch for new session
             video_batch = []
             video_batch2 = []
             video_batch_crop = []
             
-            #print('ITERATION NUMBER {0}'.format(m+1))
             batch_start = int(m*preprocess_batch_multi)
             batch_end = int((m+1)*preprocess_batch_multi)
                        
@@ -263,16 +243,6 @@ def track(video_dir, preprocessed_video_path):
                 else:
                     rest_frames = num_video_frames - (batch_start*batch_size)
                     batch = [next(videogen) for _ in range(rest_frames)]
-                #if not type(batch[0]) == np.ndarray:
-                #    break
-                #elif not type(batch[-1]) == np.ndarray:
-                #    frame_shape = batch[0].shape
-                #    temp_batch = []
-                #    for frame in batch:
-                #        if type(frame) == np.ndarray:
-                #            temp_batch.append(frame)
-                #    batch = temp_batch
-	 		
                 video_batch += list(batch)
             video_batch = np.array(video_batch, dtype = 'uint8')
             
@@ -283,7 +253,6 @@ def track(video_dir, preprocessed_video_path):
 
             # Clear TF session for human pose estimation and set TF session for human detection
             tf.compat.v1.keras.backend.clear_session()
-            #det_sess = tf.compat.v1.keras.backend.get_session(tf.compat.v1.Session(config=config))
             
             # Preprocess large video-batch in tensorflow
             video_batch = tf.constant(tf.convert_to_tensor(video_batch, dtype=tf.uint8))
@@ -299,8 +268,6 @@ def track(video_dir, preprocessed_video_path):
             meta_batch_size = shape[0]
             batch_num = int(np.ceil(meta_batch_size/batch_size))
             
-            #det_sess.graph.as_default()
-            #tf.import_graph_def(det_graph_def)
             beta = 9. 
             bdps = {i: 1.0 for i in range(num_body_parts_det)} # CAN BE ADJUSTED
             for nn in range(batch_num):
@@ -314,14 +281,10 @@ def track(video_dir, preprocessed_video_path):
                 batch = preprocess_input(batch)
 
                 # Perform prediction
-                #output_tensor = det_sess.graph.get_tensor_by_name(det_output_layer)
-                #batch_confs = det_sess.run(output_tensor, {det_input_layer: batch})
                 batch_confs = upscaled_model.predict_on_batch(batch)
 
                 # Extract coordinates
                 batch_coords = []
-                #roi_coords = []
-
                 for n in range(mini_batch_size):
                     frame_coords = []
                     for i in range(num_body_parts_det):
@@ -336,20 +299,24 @@ def track(video_dir, preprocessed_video_path):
                         peak_x = max_index % output_width
                         sigma = bdp_factor*(output_width/32) 
 
-                        #Local soft-argmax
+                        # Local soft-argmax
+                        
                         # Define beta and size of local square neighborhood
                         num_pix = int(np.round(2*sigma))
                         num_pix1 = int(num_pix+1)
+                        
                         # Define start and end indx for local square neighborhood
                         rows_start = int(np.max([int(peak_y)-num_pix, 0]))
                         rows_end = int(np.min([int(peak_y)+num_pix1, output_height]))
                         cols_start = int(np.max([int(peak_x)-num_pix, 0]))
                         cols_end = int(np.min([int(peak_x)+num_pix1, output_width]))
+                        
                         # Define localsquare neigborhod 
                         loc_mat = conf[rows_start:rows_end,cols_start:cols_end]
                         y_ind = [i for i in range(rows_start,rows_end)]
                         x_ind = [j for j in range(cols_start,cols_end)]
                         posy, posx = np.meshgrid(y_ind, x_ind, indexing='ij')
+                        
                         # Compute local soft-argmax for neigborhood
                         a = np.exp(beta*loc_mat)
                         b = np.sum(a)
@@ -385,7 +352,6 @@ def track(video_dir, preprocessed_video_path):
             min1_batch=[]
             max0_batch=[]
             max1_batch=[]
-            #win = 16
             for i in range(video_min.shape[0]): #NB!!! Most of the code could be conducted as array operations outside the for-loop for speed-up
                 min0 = np.amax([video_min_pad[i,0], 0])
                 min1 = np.amax([video_min_pad[i,1], 0])
@@ -478,28 +444,21 @@ def track(video_dir, preprocessed_video_path):
             crop_min_width = np.asarray(min0_batch)*max_shape
             crop_resolution_height = (np.asarray(max1_batch)*max_shape)-crop_min_height
             crop_resolution_width = (np.asarray(max0_batch)*max_shape)-crop_min_width
-            #metabatch_info.append((min_shape, max_shape, org_height, org_width, crop_resolution, crop_min_height, crop_min_width))
             metabatch_info.append((num_images, min_shape, max_shape, org_height, org_width, min_arg, crop_resolution_height, crop_resolution_width, crop_min_height, crop_min_width))
 
             # Perform prediction on batches of frames for HPE
-            #hpe_sess.graph.as_default()
-            #tf.import_graph_def(hpe_graph_def)
             bdps = {i: 1.0 for i in range(num_body_parts_hpe)} # CAN BE ADJUSTED
             for nn in range(batch_num):
                 start = nn*batch_size
                 end = (nn+1)*batch_size
                 batch = video_batch_crop[start:end,:,:,:]
                 mini_batch_size = batch.shape[0]
-                #print(np.shape(rois1))
 
                 # Preprocess images in batch
                 batch = np.array(batch)
                 batch = preprocess_input(batch)
 
                 # Perform prediction
-                #output_tensor = hpe_sess.graph.get_tensor_by_name(hpe_output_layer)
-                #batch_confs = hpe_sess.run(output_tensor, {hpe_input_layer: batch})
-                #batch_confs = hpe_f.predict(batch)
                 upscaled_model.predict_on_batch(batch)
 
                 # Extract coordinates
@@ -520,20 +479,24 @@ def track(video_dir, preprocessed_video_path):
                         peak_x = max_index % crop_width
                         sigma = bdp_factor*(crop_width/32) 
 
-                        #Local soft-argmax
+                        # Local soft-argmax
+                        
                         # Define beta and size of local square neighborhood
                         num_pix = int(np.round(2*sigma))
                         num_pix1 = int(num_pix+1)
+                        
                         # Define start and end indx for local square neighborhood
                         rows_start = int(np.max([int(peak_y)-num_pix, 0]))
                         rows_end = int(np.min([int(peak_y)+num_pix1, crop_height]))
                         cols_start = int(np.max([int(peak_x)-num_pix, 0]))
                         cols_end = int(np.min([int(peak_x)+num_pix1, crop_width]))
+                        
                         # Define localsquare neigborhod 
                         loc_mat = conf[rows_start:rows_end,cols_start:cols_end]
                         y_ind = [i for i in range(rows_start,rows_end)]
                         x_ind = [j for j in range(cols_start,cols_end)]
                         posy, posx = np.meshgrid(y_ind, x_ind, indexing='ij')
+                        
                         # Compute local soft-argmax for neigborhood
                         a = np.exp(beta*loc_mat)
                         b = np.sum(a)
@@ -554,16 +517,15 @@ def track(video_dir, preprocessed_video_path):
                 batch_coords = np.asarray(batch_coords)
                 coords += list(batch_coords)
             
-            #Clear TF session for human pose estimation 
+            # Clear TF session for human pose estimation 
             tf.compat.v1.keras.backend.clear_session()
 
-        #Convert to original video coordinates
+        # Convert to original video coordinates
         coords=np.array(coords)
         org_coords=np.array(coords)
         coords_shape = np.shape(org_coords)
         adjust = 0
         for meta_batch, (num_images, min_shape, max_shape, org_height, org_width, min_arg, crop_resolution_height, crop_resolution_width,  crop_min_height, crop_min_width) in enumerate(metabatch_info):
-            #adjust += len(crop_min_height)
             if (num_rotation == 0 or num_rotation == 2):
                 for i in range(0,num_images):
                     if (adjust+i)<coords_shape[0]:
@@ -646,7 +608,7 @@ def track(video_dir, preprocessed_video_path):
             org_coords.append(frame_coords)
         org_coords = np.asarray(org_coords)
         
-    # Objective 2c: Visualize predictions
+    # Visualize predictions
     if visualize:
     
         # Fetch video information
@@ -688,21 +650,13 @@ def track(video_dir, preprocessed_video_path):
                 draw.text((0.01*frame_width, 0.95*frame_height),"{0}".format(i+1),(255,255,255),font=font)
                 writer.writeFrame(np.array(img))
 
-                #if i % 500 == 0:
-                #    plt.figure()
-                #    plt.imshow(img)
-                #    plt.show()
                 i += 1
             except:
                 break
 
-            #if i % 500 == 0:
-            #   print(f'{i}')
-
         writer.close()
         writer_roi.close()
         
-    #return coords, org_coords, video_batch, video_batch_crop, num_video_frames, meta_batch, preprocess_batch_multi, batch_size
     return org_coords
         
 if __name__ == '__main__':
