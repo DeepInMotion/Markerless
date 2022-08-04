@@ -24,6 +24,8 @@ To setup the Markerless framework, follow these instructions:
 
 ## How to use on a Windows machine
 
+### Training and evaluation
+
 This is a step by step description for how to use the Markerless framework for training and evaluating ConvNets:
 1. Open a command prompt and activate the virtual environment: **activate markerless**
 2. Navigate to the Markerless folder: **cd Markerless**
@@ -54,6 +56,8 @@ This is a step by step description for how to use the Markerless framework for t
 13. The results of the training and evaluation processes are stored in the folder of the current experiment within the *'experiments'* folder (e.g., *'mpii2015/experiments/30062022 1022 MPII2015_224x224_EfficientHourglassB0_Block1to6_weights'*).
 
 **Tip: The batch script (i.e., *'main_batch.py'*) may be used for sequential training of the same ConvNet with different input resolutions to determine the optimal model complexity.**
+
+### Video-based motion tracking
 
 To employ a trained ConvNet for video-based motion tracking to extract coordinates of body keypoints we suggest the following steps:
 1. Decide whether a two stage tracker (i.e., *'track/tracker_twostage.py'*) with separate steps for person detection and pose estimation or one stage tracker (i.e., *'track/tracker_onestage.py'*) is appropriate. We recommend the use of one stage tracker only if the person of interest is covering most of the video image.
