@@ -1,6 +1,6 @@
 import os, sys
 
-""" INSERT PARAMETER SETTINGS FOR HPE-MODEL TRAINING AND EVALUATION """
+""" INSERT HYPERPARAMETER SETTINGS FOR HPE-MODEL TRAINING AND EVALUATION """
 """ Project """
 
 #### Step 1: Create a new folder under 'projects' and enter the name of the folder below. Create a 'data' and 'experiments' subfolder. 
@@ -45,8 +45,8 @@ if model_type == 'EfficientHourglass':
     block_variant = 'Block1to6' #<--assign number of blocks in the EfficientNet-backbone [Options --> 'Block1to5', (Block1to5b), 'Block1to6', 'Block1to7'] Default: Block1to6
     TF_version = None #<-- assign TF-version according to names og the weight files in 'pretrained' folder  [Options --> '_TF2', None]
 
-#NOTE1: The 'pretrained' folder shows all possible combinations of architecture parameters (Total of 141 options).
-#NOTE2: When using 'EfficientHourglass', please make sure that architecture parameters is consistent with the file name in the 'pretrained' folder.
+#NOTE1: The 'pretrained' folder shows all possible combinations of architecture hyperparameters.
+#NOTE2: When using 'EfficientHourglass', please make sure that architecture hyperparameters is consistent with the file name in the 'pretrained' folder.
 # Example: 
 # File name --> MPII_224x224_EfficientHourglassB0_Block1to6_weights --> 
 # MPII_{input_resolution}x{input_resolution}_EfficientHourglass{architecture_type}{efficientnet_variant}_{block_variant}_weights{TF_version} -->
@@ -57,14 +57,14 @@ training_batch_size = 16
 start_epoch = 0 
 num_epochs = 50 
 
-#### Step 7: Set parameters for the optimizer (Adam) 
+#### Step 7: Set hyperparameters of the optimizer (Adam) 
 learning_rate = 0.001
 beta1 = 0.9
 beta2 = 0.999
 learning_rate_decay = 0.0
 amsgrad_flag = True
 
-#### Step 8: Set parameters for the data augmentation (image rotation in degrees, image zoom in fraction of image length and width, and horizontal flipping)
+#### Step 8: Set hyperparameters of the data augmentation (image rotation in degrees, image zoom in fraction of image length and width, and horizontal flipping)
 augmentation_rotation = 45
 augmentation_zoom = 0.25
 augmentation_flip = True
