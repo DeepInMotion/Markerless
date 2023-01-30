@@ -62,6 +62,8 @@ def perform_processing(project_constants):
                     image_file_name = image_file_path.split('\\')[1]
                 elif '/' in image_file_path:
                     image_file_name = image_file_path.split('/')[1]
+                else:
+                    image_file_name = image_file_path
                 image_coordinates = annotation[2:]
                 if len(image_coordinates[0]) > 0:
                     raw_annotations[image_file_name] = image_coordinates
